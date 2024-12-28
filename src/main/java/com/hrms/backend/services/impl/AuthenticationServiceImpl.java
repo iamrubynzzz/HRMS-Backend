@@ -2,9 +2,14 @@ package com.hrms.backend.services.impl;
 
 import com.hrms.backend.dto.JwtAuthenticationResponse;
 import com.hrms.backend.dto.LoginRequest;
+import com.hrms.backend.dto.RefreshTokenRequest;
 import com.hrms.backend.dto.SignUpRequest;
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.InvalidEmailOrPasswordException;
+import com.hrms.backend.exception.InvalidTokenException;
+import com.hrms.backend.exception.UserAlreadyExistsException;
+import com.hrms.backend.exception.UserNotFoundException;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.AuthenticationService;
 import com.hrms.backend.services.JWTService;
@@ -35,34 +40,56 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     // Method to handle signup logic
     public User signup(SignUpRequest signUpRequest) {
+        //Check if user already exist
+        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+            throw new UserAlreadyExistsException("User already exists with this email");
+        }
+
         User user = new User();
         user.setEmail(signUpRequest.getEmail());
-        user.setName(signUpRequest.getUserName());
-        user.setRole(Role.Admin); // Or assign another role
+        user.setName(signUpRequest.getName());
+        user.setRole(signUpRequest.getRole());
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword())); // Encode password
         return userRepository.save(user); // Save the user to the repository
     }
 
 
-    //method to handle login logic
     // Login method to authenticate user and return JWT and Refresh Token
     public JwtAuthenticationResponse login(LoginRequest loginRequest) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                loginRequest.getEmail(), loginRequest.getPassword()
-        ));
-
-        var user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
         JwtAuthenticationResponse jwtAuthenticationResponse = new JwtAuthenticationResponse();
         try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                    loginRequest.getEmail(), loginRequest.getPassword()
+            ));
+
+        var user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new InvalidEmailOrPasswordException("Invalid email or password."));
+
+
             var jwt = jwtService.generateToken(user);
             var refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
 
             jwtAuthenticationResponse.setToken(jwt);
             jwtAuthenticationResponse.setRefreshToken(refreshToken);
         }catch (Exception e){
-            e.printStackTrace();
+            throw new RuntimeException("An error occurred during login", e);
         }
         return jwtAuthenticationResponse;
     }
+
+    public JwtAuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
+        String userEmail = jwtService.extractUsername(refreshTokenRequest.getToken());
+        User user = userRepository.findByEmail(userEmail).orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!jwtService.isTokenValid(refreshTokenRequest.getToken(), user)) {
+            throw new InvalidTokenException("The refresh token is invalid or expired");
+        }
+
+        var jwt = jwtService.generateToken(user);
+        JwtAuthenticationResponse jwtAuthenticationResponse = new JwtAuthenticationResponse();
+        jwtAuthenticationResponse.setToken(jwt);
+        jwtAuthenticationResponse.setRefreshToken(refreshTokenRequest.getToken());
+        return jwtAuthenticationResponse;
+    }
 }
+

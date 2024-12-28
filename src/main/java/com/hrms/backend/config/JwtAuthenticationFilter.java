@@ -1,13 +1,12 @@
 package com.hrms.backend.config;
 
 import com.hrms.backend.services.JWTService;
-import com.hrms.backend.services.UserService;
+import com.hrms.backend.services.impl.UserServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -17,19 +16,16 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private JWTService jwtService;
-    private UserService userService;
 
-    @Autowired
-    public JwtAuthenticationFilter(@Qualifier("JWTServiceImpl") JWTService jwtService, UserService userService) {
-        this.jwtService = jwtService;
-        this.userService = userService;
-    }
+    @Qualifier("JWTServiceImpl")
+    private final JWTService jwtService;
+    private final UserServiceImpl userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -38,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
+        //filter checks if the request has a valid Authorization header starting with Bearer
         if (StringUtils.isEmpty(authHeader) || !org.apache.commons.lang3.StringUtils.startsWith(authHeader, "Bearer ")) {
             filterChain.doFilter(request, response);
             return;

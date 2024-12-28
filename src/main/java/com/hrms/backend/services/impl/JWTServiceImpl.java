@@ -1,5 +1,6 @@
 package com.hrms.backend.services.impl;
 
+import com.hrms.backend.exception.ExpiredTokenException;
 import com.hrms.backend.services.JWTService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -38,13 +39,15 @@ public class JWTServiceImpl implements JWTService {
     }
 
 
-    //return email stored in the particular token
+    //Return email stored in the particular token
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers) {
         final Claims claims = extractAllClaims(token);
+        System.out.println(claims.getSubject());
+        System.out.println(claims.toString());
         return claimsResolvers.apply(claims);  // Use the provided function to resolve the claim
     }
 
@@ -62,7 +65,12 @@ public class JWTServiceImpl implements JWTService {
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
      }
 
+    // If token is expired, throw an exception
     private boolean isTokenExpired(String token) {
-        return extractClaim(token,Claims::getExpiration).before(new Date());
+        try {
+            return extractClaim(token, Claims::getExpiration).before(new Date());
+        } catch (Exception e) {
+            throw new ExpiredTokenException("The token has expired.");
+        }
     }
 }

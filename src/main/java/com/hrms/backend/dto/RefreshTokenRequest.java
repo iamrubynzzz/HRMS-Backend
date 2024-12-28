@@ -3,8 +3,6 @@ package com.hrms.backend.dto;
 import lombok.Data;
 
 @Data
-public class JwtAuthenticationResponse {
+public class RefreshTokenRequest {
     private String token;
-    private String refreshToken;
-
 }
