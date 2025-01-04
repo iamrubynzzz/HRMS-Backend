@@ -1,76 +1,98 @@
 package com.hrms.backend.services.impl;
 
-import com.hrms.backend.exception.ExpiredTokenException;
+import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.services.JWTService;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
 
-@Service("JWTServiceImpl")
 
+@Service("JWTServiceImpl")
 public class JWTServiceImpl implements JWTService {
-    public String generateToken(UserDetails userDetails){
+
+    @Value("${jwt.secret.key}")
+    private String secretKey;
+
+    private static final long TOKEN_EXPIRY_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+    private static final long REFRESH_TOKEN_EXPIRY_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    // Generate token
+    public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24)) // valid for  7 days
-                .signWith(getSignKey(), SignatureAlgorithm.HS256)  // Correct usage of signing with a Key object
+                .setExpiration(new Date(System.currentTimeMillis() + TOKEN_EXPIRY_DURATION))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
-
     }
 
-    public String generateRefreshToken(Map<String,Object> extraClaims, UserDetails userDetails) {
+    // Generate refresh token
+    public String generateRefreshToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() +604800000))
-                .signWith(getSignKey(), SignatureAlgorithm.HS256)  // Correct usage of signing with a Key object
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRY_DURATION))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-
-    //Return email stored in the particular token
+    // Extract username from token
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers) {
+    // Extract claims using a resolver
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
-        System.out.println(claims.getSubject());
-        System.out.println(claims.toString());
-        return claimsResolvers.apply(claims);  // Use the provided function to resolve the claim
+        return claimsResolver.apply(claims);
     }
 
+    // Get signing key
     private Key getSignKey() {
-        byte[] key = Decoders.BASE64.decode("d2VsY29tZV9zdHJvbmdfc2VjcmV0X2tleV9mb3JfdGVzdF9qd3Q1NjY=");
-        return Keys.hmacShaKeyFor(key);
-
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
+    // Extract all claims from token
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token).getBody();
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
-     public boolean isTokenValid(String token, UserDetails userDetails){
+
+    // Validate token
+    public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-     }
+    }
 
-    // If token is expired, throw an exception
+    // Check if token is expired
     private boolean isTokenExpired(String token) {
         try {
-            return extractClaim(token, Claims::getExpiration).before(new Date());
-        } catch (Exception e) {
-            throw new ExpiredTokenException("The token has expired.");
+            Date expirationDate = extractClaim(token, Claims::getExpiration);
+            if (expirationDate.before(new Date())) {
+                throw new GenericException("The token has expired.", HttpStatus.BAD_REQUEST);
+            }
+            return false;
+        } catch (ExpiredJwtException e) {
+            throw new GenericException("The token has expired.", HttpStatus.BAD_REQUEST);
         }
     }
+
 }
