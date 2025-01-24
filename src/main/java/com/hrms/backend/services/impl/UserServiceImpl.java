@@ -124,43 +124,42 @@ public class UserServiceImpl implements UserService {
     }
 
     // Method for admin to approve a user
-
     @Override
     public UserDTO approveUser(Integer userId, UserRequestDTO userInfo) {
         // Fetch the user by ID
-        Optional<User> userOptional = userRepository.findById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GenericException("User not found with ID: " + userId, HttpStatus.NOT_FOUND));
 
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-
-            // Check if the user is in PENDING status
-            if (user.getStatus() != UserStatus.PENDING) {
-                throw new GenericException("User is not in pending status.", HttpStatus.BAD_REQUEST);
-            }
-
-            // Save the user information in the UserInfo repository
-            UserInfo savedUserInfo = userInfoRepository.save(convertToUserInfoEntity(user, userInfo));
-
-            // Ensure the UserInfo entity is successfully saved
-            if (!Objects.isNull(savedUserInfo.getId())) {
-                // Set the user's status to APPROVED
-                user.setStatus(UserStatus.APPROVED);
-
-                // Save the user object after updating the status
-                userRepository.save(user);
-
-                // Map the employee to a manager
-                EmployeeManager employeeManager = new EmployeeManager();
-                employeeManager.setEmployeeId(user.getId());
-                employeeManager.setManagerId(userInfo.getManagerId());
-                employeeManagerRepository.save(employeeManager);
-            }
-
-            // Return the updated user as a UserDTO
-            return new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getStatus());
-        } else {
-            throw new GenericException("User not found with id: " + userId, HttpStatus.NOT_FOUND);
+        // Check if the user is in PENDING status
+        if (user.getStatus() != UserStatus.PENDING) {
+            throw new GenericException("User is not in pending status.", HttpStatus.BAD_REQUEST);
         }
+
+        // Check if the RFID is unique and not already assigned
+        if (userInfo.getRfid() != null && userRepository.existsByRfid(userInfo.getRfid())) {
+            throw new GenericException("RFID already assigned to another user.", HttpStatus.BAD_REQUEST);
+        }
+
+        // Save the user information in the UserInfo repository
+        UserInfo savedUserInfo = userInfoRepository.save(convertToUserInfoEntity(user, userInfo));
+
+        if (savedUserInfo.getId() == null) {
+            throw new GenericException("Failed to save user information.", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        // Update and approve the user
+        user.setStatus(UserStatus.APPROVED);
+        user.setRfid(userInfo.getRfid()); // Assign RFID during approval
+        userRepository.save(user);
+
+        // Map the employee to a manager
+        EmployeeManager employeeManager = new EmployeeManager();
+        employeeManager.setEmployeeId(user.getId());
+        employeeManager.setManagerId(userInfo.getManagerId());
+        employeeManagerRepository.save(employeeManager);
+
+        // Return the updated user as a UserDTO
+        return new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getStatus());
     }
 
 

@@ -2,6 +2,7 @@ package com.hrms.backend.controller;
 
 import com.hrms.backend.dto.UserRequestDTO;
 import com.hrms.backend.dto.UserResponseDTO;
+import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.UserInfo;
 import com.hrms.backend.services.EmployeeService;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -75,5 +76,4 @@ public class EmployeeController {
         employeeService.deleteEmployee(id);
         return ResponseEntity.ok("Employee deleted successfully");
     }
-
 }

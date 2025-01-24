@@ -32,6 +32,8 @@ public class User implements UserDetails {
     @Column(name = "status", nullable = false)
     private UserStatus status = UserStatus.PENDING;  // Default status is PENDING.
 
+    private String rfid;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));

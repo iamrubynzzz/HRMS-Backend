@@ -18,4 +18,7 @@ public class UserRequestDTO {
     private LocalDate hireDate;
     private Double salary;
     private int managerId;
+    private String rfid;
+
+
 }
