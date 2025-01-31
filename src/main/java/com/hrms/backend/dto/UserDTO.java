@@ -1,7 +1,7 @@
 package com.hrms.backend.dto;
 
 import com.hrms.backend.entities.Role;
-import com.hrms.backend.entities.UserStatus;
+import com.hrms.backend.entities.Status;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,7 @@ public class UserDTO {
     private String email;
     private String name;
     private Role role;
-    private UserStatus status;
+    private Status status;
 
 
     public UserDTO(Integer id, String email, String name) {

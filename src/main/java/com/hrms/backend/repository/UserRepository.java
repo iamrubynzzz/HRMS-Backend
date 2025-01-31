@@ -2,7 +2,7 @@ package com.hrms.backend.repository;
 
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.User;
-import com.hrms.backend.entities.UserStatus;
+import com.hrms.backend.entities.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository <User,Integer>{
 
     boolean existsByEmail(String email);
 
-    List<User> findByStatus(UserStatus userStatus);
+    List<User> findByStatus(Status userStatus);
 
     Optional<User> findById(int id);
 

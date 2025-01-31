@@ -42,6 +42,11 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/manager").hasAnyAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/employee").hasAnyAuthority(Role.EMPLOYEE.name())
                         .requestMatchers("/api/attendance/**").authenticated()
+                        .requestMatchers("/api/leave/apply").permitAll() // Permit all for applying for leave
+                        .requestMatchers("/api/leave/approve/**").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name()) // Restrict approval to ADMIN and MANAGER
+                        .requestMatchers("/api/leave/all").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name()) // Only ADMIN and MANAGER can view all leave requests
+                        .requestMatchers("/api/leave/**").authenticated() // All other leave-related APIs require authentication
+                        .requestMatchers("/api/requests/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())

@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
             System.out.println("User already exists: " + email);
 
             // Handle user status
-            if (user.getStatus() == UserStatus.PENDING) {
+            if (user.getStatus() == Status.PENDING) {
                 System.out.println("User is pending approval.");
             }
 
@@ -89,9 +89,9 @@ public class UserServiceImpl implements UserService {
                 User newUser = new User();
                 newUser.setEmail(email);
                 newUser.setName(name);
-                newUser.setPassword(passwordEncoder.encode("oauth2user")); // Placeholder password
+                newUser.setPassword(passwordEncoder.encode("Password123")); // Placeholder password
                 newUser.setRole(Role.EMPLOYEE); // Default role
-                newUser.setStatus(UserStatus.PENDING); // Set status as pending
+                newUser.setStatus(Status.PENDING); // Set status as pending
                 user = userRepository.save(newUser);
                 System.out.println("New user created: " + email);
             } catch (Exception e) {
@@ -109,7 +109,7 @@ public class UserServiceImpl implements UserService {
 
     // Implement the getUsersByStatus method
     @Override
-    public List<UserDTO> getUsersByStatus(UserStatus userStatus) {
+    public List<UserDTO> getUsersByStatus(Status userStatus) {
         List<User> users = userRepository.findByStatus(userStatus);
 
         //Case where no users are found in the given status
@@ -131,7 +131,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new GenericException("User not found with ID: " + userId, HttpStatus.NOT_FOUND));
 
         // Check if the user is in PENDING status
-        if (user.getStatus() != UserStatus.PENDING) {
+        if (user.getStatus() != Status.PENDING) {
             throw new GenericException("User is not in pending status.", HttpStatus.BAD_REQUEST);
         }
 
@@ -140,26 +140,58 @@ public class UserServiceImpl implements UserService {
             throw new GenericException("RFID already assigned to another user.", HttpStatus.BAD_REQUEST);
         }
 
-        // Save the user information in the UserInfo repository
-        UserInfo savedUserInfo = userInfoRepository.save(convertToUserInfoEntity(user, userInfo));
+        // Ensure leave balances are provided
+        if (Objects.isNull(userInfo.getAnnualLeaveBalance())) {
+            throw new GenericException("Annual Leave Balance must be provided.", HttpStatus.BAD_REQUEST);
+        }
+        if (Objects.isNull(userInfo.getSickLeaveBalance())) {
+            throw new GenericException("Sick Leave Balance must be provided.", HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate manager ID (if provided)
+        if (Objects.nonNull(userInfo.getManagerId())) {
+            User manager = userRepository.findById(userInfo.getManagerId())
+                    .orElseThrow(() -> new GenericException("Manager not found with ID: " + userInfo.getManagerId(), HttpStatus.NOT_FOUND));
+
+            if (manager.getRole() != Role.MANAGER) {
+                throw new GenericException("The provided Manager ID does not belong to a valid manager.", HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        // Convert DTO to UserInfo entity
+        UserInfo userInfoEntity = convertToUserInfoEntity(user, userInfo);
+        userInfoEntity.setAnnualLeaveBalance(userInfo.getAnnualLeaveBalance());
+        userInfoEntity.setSickLeaveBalance(userInfo.getSickLeaveBalance());
+
+        // Save user information
+        UserInfo savedUserInfo = userInfoRepository.save(userInfoEntity);
 
         if (savedUserInfo.getId() == null) {
             throw new GenericException("Failed to save user information.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         // Update and approve the user
-        user.setStatus(UserStatus.APPROVED);
+        user.setStatus(Status.APPROVED);
         user.setRfid(userInfo.getRfid()); // Assign RFID during approval
         userRepository.save(user);
 
-        // Map the employee to a manager
-        EmployeeManager employeeManager = new EmployeeManager();
-        employeeManager.setEmployeeId(user.getId());
-        employeeManager.setManagerId(userInfo.getManagerId());
-        employeeManagerRepository.save(employeeManager);
+        // Assign Employee to Manager if a valid manager ID was provided
+        if (Objects.nonNull(userInfo.getManagerId())) {
+            EmployeeManager employeeManager = new EmployeeManager();
+            employeeManager.setEmployeeId(user.getId());
+            employeeManager.setManagerId(userInfo.getManagerId());
+            employeeManagerRepository.save(employeeManager);
+        }
 
         // Return the updated user as a UserDTO
         return new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getStatus());
+    }
+
+
+    @Override
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new GenericException("User not found", HttpStatus.BAD_REQUEST));
     }
 
 
@@ -170,15 +202,14 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new GenericException("User not found with id: " + userId, HttpStatus.NOT_FOUND));
 
         // Check if the user is in PENDING status
-        if (user.getStatus() != UserStatus.PENDING) {
+        if (user.getStatus() != Status.PENDING) {
             throw new GenericException("User is not in pending status. Only users with PENDING status can be rejected.", HttpStatus.BAD_REQUEST);
         }
 
         // Set the user's status to REJECTED and save
-        user.setStatus(UserStatus.REJECTED);
+        user.setStatus(Status.REJECTED);
         userRepository.save(user);
     }
-
 
     private UserInfo convertToUserInfoEntity(User user, UserRequestDTO request) {
         UserInfo info = new UserInfo();
@@ -191,5 +222,4 @@ public class UserServiceImpl implements UserService {
         info.setUser(user);
         return info;
     }
-
 }

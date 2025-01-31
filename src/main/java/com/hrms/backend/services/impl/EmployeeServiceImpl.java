@@ -48,7 +48,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         user.setEmail(userRequestDTO.getEmail());
         user.setPassword(passwordEncoder.encode(userRequestDTO.getPassword()));
         user.setRole(Role.EMPLOYEE);
-        user.setStatus(UserStatus.APPROVED); // Default status for created employees
+        user.setStatus(Status.APPROVED); // Default status for created employees
         userRepository.save(user);
 
         // Save to UserInfo table

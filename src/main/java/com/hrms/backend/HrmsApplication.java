@@ -2,7 +2,7 @@ package com.hrms.backend;
 
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.User;
-import com.hrms.backend.entities.UserStatus;
+import com.hrms.backend.entities.Status;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,12 +11,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-import java.time.LocalDateTime;
 
 
 @SpringBootApplication
+@EnableScheduling
 public class HrmsApplication implements CommandLineRunner {
 
     @Autowired
@@ -45,7 +45,7 @@ public class HrmsApplication implements CommandLineRunner {
                         .name("Rubina Thapa")
                         .role(Role.ADMIN)
                         .password(passwordEncoder.encode(adminPassword))
-                        .status(UserStatus.APPROVED)  // Set status as Approved
+                        .status(Status.APPROVED)  // Set status as Approved
                         .build();
 
                 userRepository.save(adminUser);

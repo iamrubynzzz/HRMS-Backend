@@ -1,5 +1,6 @@
 package com.hrms.backend.repository;
 
+import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.UserInfo;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,5 +19,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
 
     // Custom query to find UserInfo by user ID
     Optional<UserInfo> findByUserId(Integer userId);
+
+    Optional<Object> findByUser(User user);
 }
 

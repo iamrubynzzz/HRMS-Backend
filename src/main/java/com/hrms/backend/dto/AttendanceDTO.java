@@ -16,7 +16,8 @@ public class AttendanceDTO {
     private Integer id;
     private String name;
     private UserDTO user; // Use UserDTO to exclude sensitive fields
-    private LocalTime timeIn;
-    private LocalTime timeOut;
     private LocalDate date;
+    private LocalTime punchIn;
+    private LocalTime punchOut;
+    private String status;
 }

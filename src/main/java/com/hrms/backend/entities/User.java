@@ -1,5 +1,6 @@
 package com.hrms.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -30,10 +31,13 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private UserStatus status = UserStatus.PENDING;  // Default status is PENDING.
+    private Status status = Status.PENDING;  // Default status is PENDING.
 
     private String rfid;
-
+    @OneToOne(mappedBy = "user")
+    @ToString.Exclude // Prevent recursion in toString()
+    @JsonIgnore
+    private UserInfo userInfo;  // Reference to the UserInfo entity
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
@@ -66,12 +70,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return status == UserStatus.APPROVED;  // Only enabled if the user is approved.
+        return status == Status.APPROVED;  // Only enabled if the user is approved.
     }
-
-
-    // Inside User class
-
-
 
 }

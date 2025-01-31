@@ -1,12 +1,11 @@
 package com.hrms.backend.services;
 
-import com.hrms.backend.dto.AttendanceDTO;
-
-import java.util.List;
+import com.hrms.backend.entities.Attendance;
+import com.hrms.backend.entities.User;
+import java.time.LocalDate;
 
 public interface AttendanceService {
-    List<AttendanceDTO> getAttendanceByUserId(int userId); // Get attendance records by user ID
-
-    // RFID-based clock-in or clock-out functionality
-    String clockInOrOut(String rfid);
+    String clockInOrOut(String rfidTag);
 }
+
+

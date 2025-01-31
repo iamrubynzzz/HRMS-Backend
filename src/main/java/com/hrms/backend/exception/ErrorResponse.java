@@ -1,8 +1,6 @@
 package com.hrms.backend.exception;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -14,4 +12,8 @@ public class ErrorResponse {
     private int status;
     private String error;
     private String message;
+
+    public ErrorResponse(String message) {
+        this.message = message;
+    }
 }

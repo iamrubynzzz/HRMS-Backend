@@ -19,6 +19,6 @@ public class UserRequestDTO {
     private Double salary;
     private int managerId;
     private String rfid;
-
-
+    private Integer  annualLeaveBalance;
+    private Integer  sickLeaveBalance;
 }
