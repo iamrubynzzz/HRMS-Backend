@@ -1,19 +1,20 @@
 package com.hrms.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import java.util.Collection;
 import java.util.List;
 
 @Data
+@Builder
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name="users")
+@Table(name = "users")
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +29,15 @@ public class User implements UserDetails {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private Status status = Status.PENDING;  // Default status is PENDING.
+
+    private String rfid;
+    @OneToOne(mappedBy = "user")
+    @ToString.Exclude // Prevent recursion in toString()
+    @JsonIgnore
+    private UserInfo userInfo;  // Reference to the UserInfo entity
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
@@ -38,43 +48,29 @@ public class User implements UserDetails {
         return email;
     }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
+    @Override
     public String getPassword() {
         return password;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
     }
 
-    public Role getRole() {
-        return role;
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
     }
 
-    public void setRole(Role role) {
-        this.role = role;
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
     }
+
+    @Override
+    public boolean isEnabled() {
+        return status == Status.APPROVED;  // Only enabled if the user is approved.
+    }
+
 }

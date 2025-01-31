@@ -1,0 +1,5 @@
+package com.hrms.backend.entities;
+
+public enum RequestType {
+    UNPAID_SICK_LEAVE,UNPAID_ANNUAL_LEAVE, PAID_SICK_LEAVE, PAID_ANNUAL_LEAVE, OVERTIME, MISSED_ATTENDANCE, ALLOWANCE
+}
