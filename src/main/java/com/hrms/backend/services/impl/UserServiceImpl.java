@@ -1,6 +1,6 @@
 package com.hrms.backend.services.impl;
 
-import com.hrms.backend.dto.UserDTO;  // Adding the UserDTO
+import com.hrms.backend.dto.UserDTO;
 import com.hrms.backend.dto.UserRequestDTO;
 import com.hrms.backend.entities.*;
 import com.hrms.backend.exception.GenericException;
@@ -12,6 +12,8 @@ import com.hrms.backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -50,7 +52,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
     }
 
-    // New method to process OAuth2User
+    // Method to process OAuth2User
     @Override
     public String processOAuth2User(OAuth2User oauth2User) {
         String email = oauth2User.getAttribute("email");
@@ -80,7 +82,7 @@ public class UserServiceImpl implements UserService {
                 case EMPLOYEE -> System.out.println("Processing as EMPLOYEE user...");
                 default -> {
                     System.out.println("Unknown role for user. Assigning default role.");
-                    user.setRole(Role.EMPLOYEE); // Default fallback
+                    user.setRole(Role.EMPLOYEE);
                 }
             }
         } else {
@@ -89,9 +91,9 @@ public class UserServiceImpl implements UserService {
                 User newUser = new User();
                 newUser.setEmail(email);
                 newUser.setName(name);
-                newUser.setPassword(passwordEncoder.encode("Password123")); // Placeholder password
+                newUser.setPassword(passwordEncoder.encode("Password123"));
                 newUser.setRole(Role.EMPLOYEE); // Default role
-                newUser.setStatus(Status.PENDING); // Set status as pending
+                newUser.setStatus(Status.PENDING);
                 user = userRepository.save(newUser);
                 System.out.println("New user created: " + email);
             } catch (Exception e) {
@@ -112,32 +114,47 @@ public class UserServiceImpl implements UserService {
     public List<UserDTO> getUsersByStatus(Status userStatus) {
         List<User> users = userRepository.findByStatus(userStatus);
 
-        //Case where no users are found in the given status
+        // Case where no users are found with the given status
         if (users.isEmpty()) {
             throw new GenericException("No users found with status: " + userStatus, HttpStatus.NOT_FOUND);
         }
 
-        // Convert the list of User entities to UserDTOs, excluding password
         return users.stream()
                 .map(user -> new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getStatus()))
                 .collect(Collectors.toList());
     }
 
+
     // Method for admin to approve a user
     @Override
     public UserDTO approveUser(Integer userId, UserRequestDTO userInfo) {
+        // Get the currently authenticated user (approver)
+        String loggedInUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User approver = userRepository.findByEmail(loggedInUserEmail)
+                .orElseThrow(() -> new GenericException("Approver not found.", HttpStatus.UNAUTHORIZED));
+
+        // Ensure only an ADMIN can approve users
+        if (approver.getRole() != Role.ADMIN) {
+            throw new GenericException("Only an ADMIN can approve users.", HttpStatus.FORBIDDEN);
+        }
+
         // Fetch the user by ID
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GenericException("User not found with ID: " + userId, HttpStatus.NOT_FOUND));
 
+        // Check if the user is already approved
+        if (user.getStatus() == Status.APPROVED) {
+            throw new GenericException("User is already approved.", HttpStatus.BAD_REQUEST);
+        }
+
         // Check if the user is in PENDING status
         if (user.getStatus() != Status.PENDING) {
-            throw new GenericException("User is not in pending status.", HttpStatus.BAD_REQUEST);
+            throw new GenericException("User is not in pending status.", HttpStatus.NOT_FOUND);
         }
 
         // Check if the RFID is unique and not already assigned
         if (userInfo.getRfid() != null && userRepository.existsByRfid(userInfo.getRfid())) {
-            throw new GenericException("RFID already assigned to another user.", HttpStatus.BAD_REQUEST);
+            throw new GenericException("RFID already assigned to another user.", HttpStatus.CONFLICT);
         }
 
         // Ensure leave balances are provided
@@ -148,14 +165,31 @@ public class UserServiceImpl implements UserService {
             throw new GenericException("Sick Leave Balance must be provided.", HttpStatus.BAD_REQUEST);
         }
 
-        // Validate manager ID (if provided)
-        if (Objects.nonNull(userInfo.getManagerId())) {
+        Integer managerIdToAssign = null; // Variable to store the manager ID to assign
+
+        // Validate manager ID based on the user's role
+        if (user.getRole() == Role.MANAGER) {
+            // Automatically find an ADMIN to assign as the manager for the user whose role is manager
+            User adminManager = userRepository.findFirstByRole(Role.ADMIN)
+                    .orElseThrow(() -> new GenericException("No ADMIN found to assign as manager.", HttpStatus.NOT_FOUND));
+
+            managerIdToAssign = adminManager.getId(); // Assign admin as manager
+
+        } else if (Objects.nonNull(userInfo.getManagerId())) {
+            // For non-MANAGER roles, validate that the manager exists and is a MANAGER
             User manager = userRepository.findById(userInfo.getManagerId())
                     .orElseThrow(() -> new GenericException("Manager not found with ID: " + userInfo.getManagerId(), HttpStatus.NOT_FOUND));
 
             if (manager.getRole() != Role.MANAGER) {
                 throw new GenericException("The provided Manager ID does not belong to a valid manager.", HttpStatus.BAD_REQUEST);
             }
+
+            // Check if the employee is already assigned to another manager
+            if (employeeManagerRepository.existsByEmployeeId(user.getId())) {
+                throw new GenericException("Employee is already assigned to another manager.", HttpStatus.CONFLICT);
+            }
+
+            managerIdToAssign = userInfo.getManagerId(); // Assign provided manager ID
         }
 
         // Convert DTO to UserInfo entity
@@ -172,14 +206,14 @@ public class UserServiceImpl implements UserService {
 
         // Update and approve the user
         user.setStatus(Status.APPROVED);
-        user.setRfid(userInfo.getRfid()); // Assign RFID during approval
+        user.setRfid(userInfo.getRfid());
         userRepository.save(user);
 
-        // Assign Employee to Manager if a valid manager ID was provided
-        if (Objects.nonNull(userInfo.getManagerId())) {
+        // Assign Employee or Manager to their respective manager (ADMIN for MANAGER, MANAGER for EMPLOYEE)
+        if (managerIdToAssign != null) {
             EmployeeManager employeeManager = new EmployeeManager();
             employeeManager.setEmployeeId(user.getId());
-            employeeManager.setManagerId(userInfo.getManagerId());
+            employeeManager.setManagerId(managerIdToAssign);
             employeeManagerRepository.save(employeeManager);
         }
 
@@ -192,6 +226,11 @@ public class UserServiceImpl implements UserService {
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new GenericException("User not found", HttpStatus.BAD_REQUEST));
+    }
+
+    @Override
+    public User getUserById(int id) {
+        return userRepository.findById(id).get();
     }
 
 

@@ -23,5 +23,5 @@ public interface UserRepository extends JpaRepository <User,Integer>{
 
     Optional<User> findByRfid(String rfid);
     boolean existsByRfid(String rfid);
-
+    Optional<User> findFirstByRole(Role role);
 }

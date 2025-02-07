@@ -24,6 +24,7 @@ public interface UserService {
     // Approve a user and add the user details
     UserDTO approveUser(Integer userId, UserRequestDTO userInfo);
     User getUserByEmail(String email);
+    User getUserById(int id);
 
     // Reject a user
     void rejectUser(Integer userId);

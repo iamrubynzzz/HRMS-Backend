@@ -15,7 +15,7 @@ public class UserInfo {
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
-    @ToString.Exclude // Prevent recursion in toString()
+    @ToString.Exclude
     @JsonIgnore
     private User user;
     private String address;

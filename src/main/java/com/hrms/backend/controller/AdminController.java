@@ -20,7 +20,7 @@ public class AdminController {
 
     //Endpoint to get a list of users with pending approval status (excluding password)
     @GetMapping("/pending-approvals")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')") // Ensures only ADMIN can access this endpoint
     public ResponseEntity<List<UserDTO>> getPendingUsers() {
         List<UserDTO> pendingUsers = userService.getUsersByStatus(Status.PENDING);
         return ResponseEntity.ok(pendingUsers);

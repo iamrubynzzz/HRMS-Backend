@@ -44,10 +44,22 @@ public class AttendanceServiceImpl implements AttendanceService {
         return "Attendance recorded successfully.";
     }
 
+    @Override
+    public Optional<Attendance> getAttendanceByUserIdAndDate(int userId, LocalDate date) {
+        return attendanceRepository.findByUserIdAndDate(userId, date);
+    }
+
+
     private AttendanceStatus determineStatus(LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
-            return AttendanceStatus.WEEKLY_LEAVE;
+            return AttendanceStatus.WEEK_OFF;
         }
         return AttendanceStatus.ABSENT; // Default to absent if no attendance is recorded
     }
+
+    @Override
+    public void saveAttendance(Attendance attendance){
+        attendanceRepository.save(attendance);
+    }
+
 }

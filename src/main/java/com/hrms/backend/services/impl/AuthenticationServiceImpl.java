@@ -42,7 +42,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     //Sign up logic
     public User signup(SignUpRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            throw new GenericException("User already exists with this email", HttpStatus.BAD_REQUEST);
+            throw new GenericException("User already exists with this email", HttpStatus.CONFLICT);
         }
 
         User user = new User();
@@ -107,8 +107,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return jwtAuthenticationResponse;
 
         } catch (GenericException e) {
-            // Handle specific case where the token is invalid or expired
-            throw e;  // rethrow GenericException with status UNAUTHORIZED
+            throw e;
         } catch (JwtException e) {  // Catch JWT-specific exceptions
             throw new GenericException("Invalid or expired JWT token", HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {

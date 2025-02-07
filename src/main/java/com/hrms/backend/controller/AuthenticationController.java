@@ -70,9 +70,4 @@ public class AuthenticationController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body("Authentication failed. Please try again.");
     }
-
-
-
-
-
 }

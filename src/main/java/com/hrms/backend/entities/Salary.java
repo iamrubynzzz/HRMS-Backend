@@ -20,4 +20,9 @@ public class Salary {
     private double taxDeduction;
     private double netSalary;
     private LocalDate calculationDate;
+    private int overtimeHoursTotal;
+    private float overtimePayTotal;
+    private int unpaidLeaveTotal;
+    private float unpaidLeaveAmount;
+    private float allowanceAmountTotal;
 }

@@ -3,7 +3,7 @@ package com.hrms.backend.entities;
 public enum AttendanceStatus {
     PRESENT,
     ABSENT,
-    WEEKLY_LEAVE,
+    WEEK_OFF,
     ANNUAL_LEAVE,
     SICK_LEAVE,
     UNPAID_LEAVE

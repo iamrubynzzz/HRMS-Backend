@@ -34,11 +34,11 @@ public class RequestServiceImpl implements RequestService {
 
         // Fetch the user from the database
         User user = userRepository.findById(Math.toIntExact(requestDTO.getUserId()))
-                .orElseThrow(() -> new GenericException("User with ID " + requestDTO.getUserId() + " not found", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new GenericException("User with ID " + requestDTO.getUserId() + " not found", HttpStatus.NOT_FOUND));
 
         // Create a new Request entity
         Request request = new Request();
-        request.setUser (user);
+        request.setUser(user);
         request.setRequestType(RequestType.valueOf(requestDTO.getRequestType()));
         request.setStartDate(requestDTO.getStartDate());
         request.setEndDate(requestDTO.getEndDate());
@@ -47,9 +47,9 @@ public class RequestServiceImpl implements RequestService {
         request.setOvertimeHours(requestDTO.getOvertimeHours());
         request.setStatus(Status.PENDING);
 
-        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_SICK_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) ||  requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_ANNUAL_LEAVE.name()) ||  requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
+        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_SICK_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_ANNUAL_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
             // Calculate the number of leave days
-            long daysBetween = ChronoUnit.DAYS.between(requestDTO.getStartDate(), requestDTO.getEndDate()) + 1;  // +1 to include the end date
+            long daysBetween = ChronoUnit.DAYS.between(requestDTO.getStartDate(), requestDTO.getEndDate()) + 1;
             request.setLeaveDays((int) daysBetween);
         }
 
@@ -79,7 +79,6 @@ public class RequestServiceImpl implements RequestService {
 
         // Validation for Overtime Requests
         if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.OVERTIME.name())) {
-            // Validate overtime hours
             if (requestDTO.getOvertimeHours() <= 0 || requestDTO.getOvertimeHours() > 24) {
                 throw new GenericException("Overtime hours must be provided and cannot exceed 24 hours.", HttpStatus.BAD_REQUEST);
             }
@@ -123,7 +122,6 @@ public class RequestServiceImpl implements RequestService {
         pendingLeaveRequests.addAll(requestRepository.findByUserAndRequestTypeAndStatus(user, RequestType.PAID_ANNUAL_LEAVE, Status.PENDING));
         pendingLeaveRequests.addAll(requestRepository.findByUserAndRequestTypeAndStatus(user, RequestType.UNPAID_ANNUAL_LEAVE, Status.PENDING));
 
-
         return !pendingLeaveRequests.isEmpty();
     }
 
@@ -154,8 +152,6 @@ public class RequestServiceImpl implements RequestService {
 
         return !leaveRequests.isEmpty();
     }
-
-
 
 
     private boolean isOvertimeRequestExists(Long userId, LocalDate date) {
@@ -229,22 +225,35 @@ public class RequestServiceImpl implements RequestService {
             request.setStatus(status);
             return requestRepository.save(request);
         }
-        return null; // Handle properly in real cases
+        return null;
     }
 
     @Override
     public RequestDTO approveRequest(Long requestId, int approverId) {
-        // Fetch the request or throw an exception if not found
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new GenericException("Leave request not found", HttpStatus.BAD_REQUEST));
 
-        // Check if the request is already approved, if you need such a check
+        // Check if the request is already approved
         if (request.getStatus() == Status.APPROVED) {
             throw new GenericException("Leave request is already approved", HttpStatus.BAD_REQUEST);
         }
 
-        // Update the request status and approved by fields
+        // Update the request status and approved by
+        if (request.getRequestType() == RequestType.PAID_SICK_LEAVE ||
+                request.getRequestType() == RequestType.PAID_ANNUAL_LEAVE) {
+            UserInfo userInfo = request.getUser().getUserInfo();
+
+            if (request.getRequestType() == RequestType.PAID_SICK_LEAVE) {
+                int newLeaveBalance = userInfo.getSickLeaveBalance() - request.getLeaveDays();
+                userInfo.setSickLeaveBalance(newLeaveBalance);
+            } else {
+                int newLeaveBalance = userInfo.getAnnualLeaveBalance() - request.getLeaveDays();
+                userInfo.setAnnualLeaveBalance(newLeaveBalance);
+            }
+
+        }
         request.setStatus(Status.APPROVED);
+
         request.setApprovedBy(userRepository.findById(approverId)
                 .orElseThrow(() -> new GenericException("Approver not found", HttpStatus.BAD_REQUEST))
                 .getId());
@@ -256,7 +265,6 @@ public class RequestServiceImpl implements RequestService {
     }
 
 
-
     @Override
     public RequestDTO rejectRequest(Long requestId, int rejecterId) {
         Optional<Request> requestOpt = requestRepository.findById(requestId);
@@ -264,7 +272,6 @@ public class RequestServiceImpl implements RequestService {
         if (requestOpt.isPresent()) {
             Request request = requestOpt.get();
 
-            // Set the status to REJECTED, not APPROVED
             request.setStatus(Status.REJECTED);
 
             // Set the ID of the user who rejected the request
@@ -275,15 +282,11 @@ public class RequestServiceImpl implements RequestService {
             // Save the updated request
             requestRepository.save(request);
 
-            // Return the updated request as a DTO
             return mapToDTO(request);
         }
 
-        // If the request is not found, throw a GenericException
         throw new GenericException("Leave request not found", HttpStatus.BAD_REQUEST);
     }
-
-
 
 
     private void updateAttendanceStatus(Request request) {
