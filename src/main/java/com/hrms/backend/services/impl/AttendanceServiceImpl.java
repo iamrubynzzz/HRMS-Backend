@@ -1,6 +1,7 @@
 package com.hrms.backend.services.impl;
 
 
+import com.hrms.backend.dto.AttendanceDTO;
 import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.AttendanceStatus;
 import com.hrms.backend.repository.AttendanceRepository;
@@ -33,6 +34,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         Attendance attendance = attendanceRepository.findByUserAndDate(user, today)
                 .orElse(new Attendance(null, user, today, null, null, determineStatus(today)));
 
+
         if (attendance.getPunchIn() == null) {
             attendance.setPunchIn(LocalTime.now());
             attendance.setStatus(AttendanceStatus.PRESENT);
@@ -49,7 +51,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendanceRepository.findByUserIdAndDate(userId, date);
     }
 
-
     private AttendanceStatus determineStatus(LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
             return AttendanceStatus.WEEK_OFF;
@@ -62,4 +63,15 @@ public class AttendanceServiceImpl implements AttendanceService {
         attendanceRepository.save(attendance);
     }
 
+    @Override
+    public AttendanceDTO convertToDTO(Attendance attendance) {
+        return new AttendanceDTO(
+                attendance.getId(),
+                attendance.getUser().getId(),
+                attendance.getDate(),
+                attendance.getPunchIn(),
+                attendance.getPunchOut(),
+                attendance.getStatus()
+        );
+    }
 }

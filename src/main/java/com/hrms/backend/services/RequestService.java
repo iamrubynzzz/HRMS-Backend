@@ -1,6 +1,7 @@
 package com.hrms.backend.services;
 
 import com.hrms.backend.dto.RequestDTO;
+import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.Request;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
@@ -20,5 +21,6 @@ public interface RequestService {
 
     RequestDTO approveRequest(Long requestId, int approverId);
     RequestDTO rejectRequest(Long requestId, int rejecterId);
+
 }
 

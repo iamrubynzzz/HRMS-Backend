@@ -1,5 +1,6 @@
 package com.hrms.backend.services;
 
+import com.hrms.backend.dto.AttendanceDTO;
 import com.hrms.backend.entities.Attendance;
 
 import java.time.LocalDate;
@@ -9,6 +10,8 @@ public interface AttendanceService {
     String clockInOrOut(String rfidTag);
     Optional<Attendance> getAttendanceByUserIdAndDate(int userId, LocalDate date);
     void saveAttendance(Attendance attendance);
+    AttendanceDTO convertToDTO(Attendance attendance);
+
 
 }
 

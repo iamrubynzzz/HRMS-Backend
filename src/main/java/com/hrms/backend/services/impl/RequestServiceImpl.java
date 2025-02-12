@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -53,6 +54,12 @@ public class RequestServiceImpl implements RequestService {
             request.setLeaveDays((int) daysBetween);
         }
 
+        // Handle missed attendance requests
+        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.MISSED_ATTENDANCE.name())) {
+            request.setStartDate(requestDTO.getStartDate());
+            request.setEndDate(requestDTO.getStartDate());
+        }
+
         // Save the request to the database
         Request savedRequest = requestRepository.save(request);
 
@@ -75,12 +82,20 @@ public class RequestServiceImpl implements RequestService {
             if (isUserPendingLeave(requestDTO.getUserId())) {
                 throw new GenericException("User  cannot apply for another leave request while the current request is still PENDING.", HttpStatus.BAD_REQUEST);
             }
+
+            if (hasOverlappingLeave(requestDTO.getUserId(), requestDTO.getStartDate(), requestDTO.getEndDate())) {
+                throw new GenericException("User has already applied for leave on the same dates.", HttpStatus.BAD_REQUEST);
+            }
         }
 
         // Validation for Overtime Requests
         if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.OVERTIME.name())) {
             if (requestDTO.getOvertimeHours() <= 0 || requestDTO.getOvertimeHours() > 24) {
                 throw new GenericException("Overtime hours must be provided and cannot exceed 24 hours.", HttpStatus.BAD_REQUEST);
+            }
+
+            if(requestDTO.getStartDate() == null){
+                throw new GenericException("Date must be provided",HttpStatus.BAD_REQUEST);
             }
 
             // Validate that the overtime request date is not in the past
@@ -106,6 +121,45 @@ public class RequestServiceImpl implements RequestService {
                 throw new GenericException("Allowance amount must be provided for an allowance request.", HttpStatus.BAD_REQUEST);
             }
         }
+
+        // Validation for Missed Attendance Requests
+        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.MISSED_ATTENDANCE.name())) {
+
+
+            if (requestDTO.getStartDate() == null) {
+                throw new GenericException("Date must be provided for missed attendance requests.", HttpStatus.BAD_REQUEST);
+            }
+            if (requestDTO.getStartDate().isAfter(LocalDate.now())) {
+                throw new GenericException("Missed attendance request date cannot be in the future.", HttpStatus.BAD_REQUEST);
+            }
+            if (isUserOnLeave(requestDTO.getUserId(), requestDTO.getStartDate())) {
+                throw new GenericException("User cannot apply for missed attendance on a leave day.", HttpStatus.BAD_REQUEST);
+            }
+            if (isMissedAttendanceRequestExists(requestDTO.getUserId(), requestDTO.getStartDate())) {
+                throw new GenericException("User has already applied for missed attendance on the same date.", HttpStatus.BAD_REQUEST);
+            }
+        }
+    }
+
+
+
+    private boolean isMissedAttendanceRequestExists(Long userId, LocalDate startDate) {
+        List<Request> missedAttendanceRequests = requestRepository.findByUserAndRequestTypeAndStartDate(
+                userRepository.findById(Math.toIntExact(userId))
+                        .orElseThrow(() -> new GenericException("User not found", HttpStatus.NOT_FOUND)),
+                RequestType.MISSED_ATTENDANCE, startDate);
+
+        return !missedAttendanceRequests.isEmpty();
+    }
+
+    private boolean hasOverlappingLeave(Long userId, LocalDate startDate, LocalDate endDate) {
+        return requestRepository.existsByUserIdAndRequestTypeInAndStatusInAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                userId,
+                Arrays.asList(RequestType.PAID_SICK_LEAVE, RequestType.UNPAID_SICK_LEAVE, RequestType.PAID_ANNUAL_LEAVE, RequestType.UNPAID_ANNUAL_LEAVE),
+                Arrays.asList(Status.PENDING, Status.APPROVED),
+                endDate,
+                startDate
+        );
     }
 
 
@@ -129,7 +183,7 @@ public class RequestServiceImpl implements RequestService {
     public boolean isUserOnLeave(Long userId, LocalDate date) {
         // Fetch the user from the repository
         User user = userRepository.findById(Math.toIntExact(userId))
-                .orElseThrow(() -> new GenericException("User not found", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new GenericException("User not found", HttpStatus.NOT_FOUND));
 
 
         List<Request> leaveRequests = new ArrayList<>();
@@ -156,7 +210,7 @@ public class RequestServiceImpl implements RequestService {
 
     private boolean isOvertimeRequestExists(Long userId, LocalDate date) {
         List<Request> overtimeRequests = requestRepository.findByUserAndRequestTypeAndStartDate(userRepository.findById(Math.toIntExact(userId))
-                        .orElseThrow(() -> new GenericException("User not found", HttpStatus.BAD_REQUEST)),
+                        .orElseThrow(() -> new GenericException("User not found", HttpStatus.NOT_FOUND)),
                 RequestType.OVERTIME, date);
 
         return !overtimeRequests.isEmpty();
@@ -231,11 +285,36 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public RequestDTO approveRequest(Long requestId, int approverId) {
         Request request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new GenericException("Leave request not found", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new GenericException("Leave request not found", HttpStatus.NOT_FOUND));
 
         // Check if the request is already approved
         if (request.getStatus() == Status.APPROVED) {
             throw new GenericException("Leave request is already approved", HttpStatus.BAD_REQUEST);
+        }
+
+        // Handle MISSED_ATTENDANCE request approval
+        if (request.getRequestType() == RequestType.MISSED_ATTENDANCE) {
+            LocalDate attendanceDate = request.getStartDate();
+            User user = request.getUser();
+
+            // Check if an attendance record exists for the given date and user
+            Optional<Attendance> existingAttendanceOpt = attendanceRepository.findByUserAndDate(user, attendanceDate);
+
+            if (existingAttendanceOpt.isPresent()) {
+                // If the record exists and is ABSENT, update it to PRESENT
+                Attendance existingAttendance = existingAttendanceOpt.get();
+                if (existingAttendance.getStatus() == AttendanceStatus.ABSENT) {
+                    existingAttendance.setStatus(AttendanceStatus.PRESENT);
+                    attendanceRepository.save(existingAttendance);
+                }
+            } else {
+                // If no record exists, create a new attendance record with status PRESENT
+                Attendance newAttendance = new Attendance();
+                newAttendance.setUser(user);
+                newAttendance.setDate(attendanceDate);
+                newAttendance.setStatus(AttendanceStatus.PRESENT);
+                attendanceRepository.save(newAttendance);
+            }
         }
 
         // Update the request status and approved by
@@ -255,7 +334,7 @@ public class RequestServiceImpl implements RequestService {
         request.setStatus(Status.APPROVED);
 
         request.setApprovedBy(userRepository.findById(approverId)
-                .orElseThrow(() -> new GenericException("Approver not found", HttpStatus.BAD_REQUEST))
+                .orElseThrow(() -> new GenericException("Approver not found", HttpStatus.NOT_FOUND))
                 .getId());
 
         // Save the updated request
@@ -276,7 +355,7 @@ public class RequestServiceImpl implements RequestService {
 
             // Set the ID of the user who rejected the request
             request.setRejectedBy(userRepository.findById(rejecterId)
-                    .orElseThrow(() -> new GenericException("Rejecter not found", HttpStatus.BAD_REQUEST))
+                    .orElseThrow(() -> new GenericException("Rejecter not found", HttpStatus.NOT_FOUND))
                     .getId());
 
             // Save the updated request
@@ -285,27 +364,7 @@ public class RequestServiceImpl implements RequestService {
             return mapToDTO(request);
         }
 
-        throw new GenericException("Leave request not found", HttpStatus.BAD_REQUEST);
+        throw new GenericException("Leave request not found", HttpStatus.NOT_FOUND);
     }
-
-
-    private void updateAttendanceStatus(Request request) {
-        // Assume that the leave request is for a specific date range
-        LocalDate startDate = request.getStartDate();
-        LocalDate endDate = request.getEndDate();
-
-        // Check if the leave is approved as unpaid leave or not
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            AttendanceStatus status = request.getStatus() == Status.APPROVED ? AttendanceStatus.UNPAID_LEAVE : AttendanceStatus.valueOf(request.getRequestType().name());
-
-            // Create or update attendance record for each day of the leave
-            Attendance attendance = attendanceRepository.findByUserAndDate(request.getUser(), date)
-                    .orElse(new Attendance(request.getUser(), date, status));
-
-            attendance.setStatus(status);
-            attendanceRepository.save(attendance);
-        }
-    }
-
 
 }

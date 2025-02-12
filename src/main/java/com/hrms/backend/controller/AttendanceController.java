@@ -1,21 +1,27 @@
 package com.hrms.backend.controller;
 
 import com.hrms.backend.dto.AttendanceDTO;
+import com.hrms.backend.entities.Attendance;
+import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.services.AttendanceService;
+import com.hrms.backend.services.RequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
 public class AttendanceController {
     private final AttendanceService attendanceService;
-
+    private final RequestService requestService;
     @PostMapping("/{rfid}")
     public ResponseEntity<?> clockInOut(@PathVariable String rfid) {
         try {
@@ -25,4 +31,20 @@ public class AttendanceController {
             return ResponseEntity.status(500).body("An error occurred: " + e.getMessage());
         }
     }
+
+    @GetMapping("/{userId}/{date}")
+    public ResponseEntity<?> getAttendance(@PathVariable int userId, @PathVariable String date) {
+        LocalDate attendanceDate = LocalDate.parse(date);
+
+        Optional<Attendance> attendanceOptional = attendanceService.getAttendanceByUserIdAndDate(userId, attendanceDate);
+
+        if (attendanceOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No attendance record found for user ID " + userId + " on " + attendanceDate);
+        }
+
+        AttendanceDTO attendanceDTO = attendanceService.convertToDTO(attendanceOptional.get());
+        return ResponseEntity.ok(attendanceDTO);
+    }
+
 }

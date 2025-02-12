@@ -13,5 +13,4 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Optional<Attendance> findByUserAndDate(User user, LocalDate date);
     Optional<Attendance> findByUserIdAndDate(int userId,LocalDate date);
 
-
 }

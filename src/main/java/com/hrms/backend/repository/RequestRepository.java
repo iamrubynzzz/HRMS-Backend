@@ -28,4 +28,12 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     List<Request> findByUserAndRequestTypeAndStatusAndStartDateBetween(
             User user, RequestType requestType, Status status, LocalDate startDate, LocalDate endDate);
 
+    boolean existsByUserIdAndRequestTypeInAndStatusInAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            Long userId,
+            List<RequestType> requestTypes,
+            List<Status> statuses,
+            LocalDate endDate,
+            LocalDate startDate
+    );
+
 }

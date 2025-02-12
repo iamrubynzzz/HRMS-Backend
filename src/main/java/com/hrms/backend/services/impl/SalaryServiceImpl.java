@@ -33,7 +33,7 @@ public class SalaryServiceImpl implements SalaryService {
 
     @Override
     public void calculateMonthlySalary(User employee) {
-        
+
     }
 
     @Override
