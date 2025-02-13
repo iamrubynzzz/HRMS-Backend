@@ -20,8 +20,6 @@ public class AttendanceDTO {
     private LocalTime punchOut;
     private String status;
 
-
-
     public AttendanceDTO(Long id, int userId, LocalDate date, LocalTime punchIn, LocalTime punchOut, AttendanceStatus status) {
         this.id = Math.toIntExact(id);
         this.id = userId;
