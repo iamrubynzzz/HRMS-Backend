@@ -2,21 +2,32 @@ package com.hrms.backend.controller;
 
 import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.Request;
+import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.AccessDeniedException;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.JWTService;
 import com.hrms.backend.services.RequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import com.hrms.backend.services.UserService;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +35,7 @@ import java.util.Optional;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/requests")
+@CrossOrigin(origins = "*")
 public class RequestController {
 
     @Autowired
@@ -67,13 +79,26 @@ public class RequestController {
         return ResponseEntity.ok(requestService.getRequestsByCreatedDate(createdDate));
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Request> updateRequestStatus(@PathVariable Long id, @RequestParam Status status) {
-        Request updatedRequest = requestService.updateRequestStatus(id, status);
-        if (updatedRequest != null) {
-            return ResponseEntity.ok(updatedRequest);
-        }
-        return ResponseEntity.notFound().build();
+    @GetMapping("/my-requests")
+    public ResponseEntity<Page<RequestDTO>> getMyRequests(
+            Principal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdDate,desc") String sort,
+            @RequestParam(required = false) Status status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        String username = principal.getName();
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Parse sort parameter
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = Sort.Direction.fromString(sortParams[1]);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        Page<RequestDTO> myRequests = requestService.getAllRequestsForLoggedInUser(user, status, date, pageable);
+        return ResponseEntity.ok(myRequests);
     }
 
     @PutMapping("/approve/{requestId}")
@@ -111,4 +136,48 @@ public class RequestController {
         }
     }
 
+    @DeleteMapping("/{requestId}/cancel")
+    public ResponseEntity<String> cancelRequest(@PathVariable Long requestId, Principal principal) {
+        String username = principal.getName();
+        boolean isCancelled = requestService.cancelRequest(requestId, username);
+
+        if (isCancelled) {
+            return ResponseEntity.ok("Request cancelled successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request cancellation failed.");
+        }
+    }
+
+    @GetMapping("/all-requests")
+    public ResponseEntity<Page<RequestDTO>> getAllRequestsForAdmin(
+            Principal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdDate,desc") String sort,
+            @RequestParam(required = false) Status status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String employeeName
+    ) {
+
+        // Get logged-in user
+        String username = principal.getName();
+        System.out.println("============"+username);
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        System.out.println("User roles: " + user.getAuthorities());
+
+        // Ensure the user is an ADMIN
+        if (!user.getAuthorities().contains(new SimpleGrantedAuthority(Role.ADMIN.name()))) {
+            throw new AccessDeniedException("Only admins can view all requests.", HttpStatus.FORBIDDEN);
+        }
+
+        // Parse sort parameter
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = Sort.Direction.fromString(sortParams[1]);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        Page<RequestDTO> allRequests = requestService.getAllRequests(user, status, date, employeeName, pageable);
+        return ResponseEntity.ok(allRequests);
+    }
 }

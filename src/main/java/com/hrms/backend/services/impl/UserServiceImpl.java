@@ -233,6 +233,11 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(id).get();
     }
 
+    @Override
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByEmail(username);
+    }
+
 
     // Method for admin to reject a user
     public void rejectUser(Integer userId) {

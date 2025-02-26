@@ -21,5 +21,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
     Optional<UserInfo> findByUserId(Integer userId);
 
     Optional<Object> findByUser(User user);
+
+    boolean existsByUserId(Integer userId);
 }
 

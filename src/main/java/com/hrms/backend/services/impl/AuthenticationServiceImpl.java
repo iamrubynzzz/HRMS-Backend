@@ -4,6 +4,7 @@ import com.hrms.backend.dto.JwtAuthenticationResponse;
 import com.hrms.backend.dto.LoginRequest;
 import com.hrms.backend.dto.RefreshTokenRequest;
 import com.hrms.backend.dto.SignUpRequest;
+import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.UserRepository;
@@ -56,14 +57,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     // Login method to authenticate user and return JWT
     public JwtAuthenticationResponse login(LoginRequest loginRequest) {
         try {
+            System.out.println("Attempting authentication for: " + loginRequest.getEmail());
+            var user = userRepository.findByEmail(loginRequest.getEmail())
+                    .orElse(null);
+
+            if (user == null) {
+                throw new GenericException("Invalid email or password.", HttpStatus.UNAUTHORIZED);
+            }
+
+            // Check if the user is approved
+            if (user.getStatus() != Status.APPROVED) {
+                System.out.println("User  is not approved: " + user.getEmail());
+                throw new GenericException("Your account is not approved yet. Please wait for approval.", HttpStatus.FORBIDDEN);
+            }
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(), loginRequest.getPassword()
                     )
             );
 
-            var user = userRepository.findByEmail(loginRequest.getEmail())
-                    .orElseThrow(() -> new GenericException("Invalid email or password.", HttpStatus.UNAUTHORIZED));
+            System.out.println("Authentication successful, generating tokens...");
 
             var jwt = jwtService.generateToken(user);
             var refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
@@ -76,10 +90,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         } catch (BadCredentialsException e) {
             throw new GenericException("Invalid email or password.", HttpStatus.UNAUTHORIZED);
+        } catch (GenericException e) {
+            throw e; // Re-throw the GenericException
         } catch (Exception e) {
-            throw new GenericException("An error occurred during login.", HttpStatus.INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+            throw new GenericException("An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
 
 
 

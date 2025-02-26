@@ -2,8 +2,11 @@ package com.hrms.backend.services;
 
 import com.hrms.backend.dto.UserDTO;
 import com.hrms.backend.dto.UserRequestDTO;
+import com.hrms.backend.dto.UserResponseDTO;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -28,5 +31,7 @@ public interface UserService {
 
     // Reject a user
     void rejectUser(Integer userId);
+
+    Optional<User> findByUsername(String username);
 
 }

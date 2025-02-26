@@ -21,4 +21,5 @@ public class UserRequestDTO {
     private String rfid;
     private Integer  annualLeaveBalance;
     private Integer  sickLeaveBalance;
+
 }

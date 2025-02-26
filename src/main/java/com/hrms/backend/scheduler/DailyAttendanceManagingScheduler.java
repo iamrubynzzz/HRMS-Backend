@@ -24,13 +24,13 @@ public class DailyAttendanceManagingScheduler {
 
     private final UserServiceImpl userService;
 
+ //   @Scheduled(cron = "0 * * * * ?") // run scheduler every minute to test
     @Scheduled(cron = "0 0 1 * * ?") // run scheduler at 1:00 am in the morning
     public void manageDailyAttendance() {
         List<UserDTO> users = userService.getUsersByStatus(Status.APPROVED);
         for (int i = 0; i < users.size(); i++) {
             manageAttendance(users.get(i).getId());
         }
-
     }
 
     private void manageAttendance(int userId){
@@ -53,5 +53,4 @@ public class DailyAttendanceManagingScheduler {
             attendanceService.saveAttendance(attendance);
         }
     }
-
 }

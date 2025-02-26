@@ -31,7 +31,7 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status = Status.PENDING;  // Default status is PENDING.
+    private Status status = Status.PENDING;
 
     private String rfid;
     @OneToOne(mappedBy = "user")
@@ -70,7 +70,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return status == Status.APPROVED;  // Only enabled if the user is approved.
+        return this.status == Status.APPROVED;
     }
-
 }
+

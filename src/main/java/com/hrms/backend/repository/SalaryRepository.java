@@ -1,6 +1,7 @@
 package com.hrms.backend.repository;
 
 import com.hrms.backend.entities.Salary;
+import com.hrms.backend.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,4 +13,8 @@ import java.util.Optional;
 public interface SalaryRepository extends JpaRepository<Salary, Long> {
     List<Salary> findByUserId(int userId);
     Optional<Salary> findByUserIdAndCalculationDate(int userId, LocalDate date);
+
+    void deleteByUser(User user);
+
+    boolean existsByUser(User user);
 }

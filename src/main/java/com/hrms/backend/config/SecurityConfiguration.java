@@ -6,6 +6,7 @@ import com.hrms.backend.services.impl.UserServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -36,32 +37,32 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(request -> request.requestMatchers("/api/v1/auth/**")
-                        .permitAll()
+                .authorizeHttpRequests(request -> request
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS requests
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/v1/manager/**").hasAnyAuthority(Role.MANAGER.name())
-                        .requestMatchers("/api/v1/employee/**").hasAnyAuthority(Role.EMPLOYEE.name())
+                        .requestMatchers("/api/v1/user/details").authenticated()
+                        .requestMatchers("/api/v1/user/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/attendance/**").authenticated()
-                        .requestMatchers("/api/leave/apply").permitAll() // Permit all for applying for leave
-                        .requestMatchers("/api/leave/approve/**").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name()) // Restrict approval to ADMIN and MANAGER
-                        .requestMatchers("/api/leave/all").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name()) // Only ADMIN and MANAGER can view all leave requests
-                        .requestMatchers("/api/leave/**").authenticated() // All other leave-related APIs require authentication
+                        .requestMatchers("/api/leave/apply").permitAll()
+                        .requestMatchers("/api/leave/approve/**").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())
+                        .requestMatchers("/api/leave/all").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())
+                        .requestMatchers("/api/leave/**").authenticated()
                         .requestMatchers("/api/requests/**").permitAll()
                         .anyRequest().authenticated())
-
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                // OAuth2 login configuration
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customOAuth2AuthenticationSuccessHandler)  // Register success handler here
+                        .successHandler(customOAuth2AuthenticationSuccessHandler)
                         .failureUrl("/api/v1/auth/error")
                 );
 
         return http.build();
     }
-
 
     @Bean
     public AuthenticationProvider authenticationProvider() {

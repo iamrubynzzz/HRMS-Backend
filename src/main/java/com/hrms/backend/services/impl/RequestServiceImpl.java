@@ -2,6 +2,7 @@ package com.hrms.backend.services.impl;
 
 import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.*;
+import com.hrms.backend.exception.AccessDeniedException;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.AttendanceRepository;
 import com.hrms.backend.repository.RequestRepository;
@@ -9,6 +10,8 @@ import com.hrms.backend.repository.UserInfoRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.RequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -33,22 +36,45 @@ public class RequestServiceImpl implements RequestService {
         // Validate the request
         validateRequest(requestDTO);
 
+        // Check if userId is null
+        if (requestDTO.getUserId() == null) {
+            throw new GenericException("User ID must be provided.", HttpStatus.BAD_REQUEST);
+        }
+
+        // Parse userId to Long (in case it's sent as a different type)
+        Long userId = Long.parseLong(requestDTO.getUserId().toString());
+
         // Fetch the user from the database
-        User user = userRepository.findById(Math.toIntExact(requestDTO.getUserId()))
-                .orElseThrow(() -> new GenericException("User with ID " + requestDTO.getUserId() + " not found", HttpStatus.NOT_FOUND));
+        User user = userRepository.findById(userId.intValue()) // Convert Long to int if needed
+                .orElseThrow(() -> new GenericException("User with ID " + userId + " not found", HttpStatus.NOT_FOUND));
 
         // Create a new Request entity
         Request request = new Request();
         request.setUser(user);
         request.setRequestType(RequestType.valueOf(requestDTO.getRequestType()));
-        request.setStartDate(requestDTO.getStartDate());
-        request.setEndDate(requestDTO.getEndDate());
+
+        // Set dates for allowance request if they are null
+        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.ALLOWANCE.name())) {
+            // For allowance, set both start and end date to today's date
+            LocalDate currentDate = LocalDate.now();
+            request.setStartDate(currentDate);
+            request.setEndDate(currentDate);
+        } else {
+            // For other request types, use the provided dates
+            request.setStartDate(requestDTO.getStartDate());
+            request.setEndDate(requestDTO.getEndDate());
+        }
+
         request.setReason(requestDTO.getReason());
         request.setAllowanceAmount(requestDTO.getAllowanceAmount());
         request.setOvertimeHours(requestDTO.getOvertimeHours());
         request.setStatus(Status.PENDING);
 
-        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_SICK_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_ANNUAL_LEAVE.name()) || requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
+        // Handle leave requests
+        if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_SICK_LEAVE.name()) ||
+                requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) ||
+                requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_ANNUAL_LEAVE.name()) ||
+                requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
             // Calculate the number of leave days
             long daysBetween = ChronoUnit.DAYS.between(requestDTO.getStartDate(), requestDTO.getEndDate()) + 1;
             request.setLeaveDays((int) daysBetween);
@@ -224,10 +250,12 @@ public class RequestServiceImpl implements RequestService {
         dto.setRequestType(request.getRequestType().toString());
         dto.setStartDate(request.getStartDate());
         dto.setEndDate(request.getEndDate());
+        dto.setLeaveDays(request.getLeaveDays());
         dto.setReason(request.getReason());
         dto.setAllowanceAmount(request.getAllowanceAmount());
         dto.setOvertimeHours(request.getOvertimeHours());
         dto.setStatus(request.getStatus().toString());
+        dto.setEmployeeName(request.getUser().getName());
         return dto;
 
     }
@@ -269,6 +297,24 @@ public class RequestServiceImpl implements RequestService {
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
+
+  /*  @Override
+    public List<RequestDTO> getAllRequestsForLoggedInUser(User user) {
+        List<Request> requests = requestRepository.findByUser(user);
+        return requests.stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }*/
+
+    @Override
+    public Page<RequestDTO> getAllRequests(User user, Status status, LocalDate date, String employeeName, Pageable pageable) {
+        // Fetch paginated and filtered requests from the repository
+        Page<Request> requests = requestRepository.findAllRequests(status, date, employeeName, pageable);
+
+        // Map the Page<Request> to Page<RequestDTO>
+        return requests.map(this::mapToDTO);
+    }
+
 
 
     @Override
@@ -365,6 +411,43 @@ public class RequestServiceImpl implements RequestService {
         }
 
         throw new GenericException("Leave request not found", HttpStatus.NOT_FOUND);
+    }
+
+    //To cancel a request created by user
+    //Employee can cancel the request they created
+    @Override
+    public boolean cancelRequest(Long requestId, String username) {
+        Optional<Request> optionalRequest = requestRepository.findById(requestId);
+
+        if (optionalRequest.isPresent()) {
+            Request request = optionalRequest.get();
+
+            // Only allow cancellation if the request is still PENDING
+            if (!request.getStatus().equals(Status.PENDING)) {
+                throw new IllegalStateException("Only pending requests can be cancelled.");
+            }
+
+            // Ensure only the request creator can cancel it
+            if (!request.getUser().getUsername().equals(username)) {
+                throw new AccessDeniedException("You are not authorized to cancel this request.", HttpStatus.FORBIDDEN);
+            }
+
+            // Perform deletion
+            requestRepository.delete(request);
+            return true;
+        } else {
+            throw new RuntimeException("Request not found.");
+        }
+    }
+
+    //Here filter by date status and pagination concept is added
+    @Override
+    public Page<RequestDTO> getAllRequestsForLoggedInUser(User user, Status status, LocalDate date, Pageable pageable) {
+        // Fetch paginated and filtered requests from the repository
+        Page<Request> requests = requestRepository.findByUserAndFilters(user, status, date, pageable);
+
+        // Map the Page<Request> to Page<RequestDTO>
+        return requests.map(this::mapToDTO);
     }
 
 }
