@@ -5,6 +5,9 @@ import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.Request;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,6 +24,15 @@ public interface RequestService {
 
     RequestDTO approveRequest(Long requestId, int approverId);
     RequestDTO rejectRequest(Long requestId, int rejecterId);
+
+
+  /*  List<RequestDTO> getAllRequestsForLoggedInUser(User user);*/
+
+    boolean cancelRequest(Long requestId, String username);
+
+    Page<RequestDTO> getAllRequestsForLoggedInUser(User user, Status status, LocalDate date, Pageable pageable);
+
+    Page<RequestDTO> getAllRequests(User user, Status status, LocalDate date, String employeeName, Pageable pageable);
 
 }
 

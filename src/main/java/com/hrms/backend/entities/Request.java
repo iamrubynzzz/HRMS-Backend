@@ -19,25 +19,25 @@ public class Request {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id", nullable = false)
     private User user; // Reference to User entity
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private RequestType requestType; // LEAVE, OVERTIME, MISSED_ATTENDANCE, ALLOWANCE
+    private RequestType requestType;
 
     private LocalDate startDate; // Used for leave and overtime
 
     private LocalDate endDate; // Used for leave and overtime
     @Column(updatable = false)
-    private LocalDate createdDate; // Automatically set when created
+    private LocalDate createdDate;
 
     @PrePersist
     protected void onCreate() {
         this.createdDate = LocalDate.now(); // Set createdDate when saving for the first time
     }
-    private String reason; // Reason for request
+    private String reason;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

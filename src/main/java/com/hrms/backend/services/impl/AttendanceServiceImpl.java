@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +53,23 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendanceRepository.findByUserIdAndDate(userId, date);
     }
 
+    // New method for fetching records by user ID and date range
+    @Override
+    public List<AttendanceDTO> getAttendanceByUserIdAndDateRange(int userId, LocalDate startDate, LocalDate endDate) {
+        List<Attendance> attendanceList = attendanceRepository.findByUserIdAndDateBetween(userId, startDate, endDate);
+        return attendanceList.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AttendanceDTO> getAttendanceByStatusAndDateRange(String status, LocalDate startDate, LocalDate endDate) {
+        AttendanceStatus attendanceStatus = AttendanceStatus.valueOf(status.toUpperCase()); // Convert string to enum
+        return attendanceRepository.findByStatusAndDateBetween(attendanceStatus, startDate, endDate);
+    }
+
+
+
     private AttendanceStatus determineStatus(LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
             return AttendanceStatus.WEEK_OFF;
@@ -67,6 +86,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     public AttendanceDTO convertToDTO(Attendance attendance) {
         return new AttendanceDTO(
                 attendance.getId(),
+                attendance.getUser().getName(),
                 attendance.getUser().getId(),
                 attendance.getDate(),
                 attendance.getPunchIn(),
@@ -74,4 +94,5 @@ public class AttendanceServiceImpl implements AttendanceService {
                 attendance.getStatus()
         );
     }
+
 }

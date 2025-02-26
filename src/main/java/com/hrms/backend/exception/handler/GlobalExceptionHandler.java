@@ -1,9 +1,6 @@
 package com.hrms.backend.exception.handler;
 
-import com.hrms.backend.exception.AccessDeniedException;
-import com.hrms.backend.exception.AuthenticationCredentialsNotFoundException;
-import com.hrms.backend.exception.GenericException;
-import com.hrms.backend.exception.ErrorResponse;
+import com.hrms.backend.exception.*;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,23 +27,15 @@ public class GlobalExceptionHandler {
                 ex.getStatus().getReasonPhrase(),
                 ex.getMessage()
         );
+        System.out.println("Returning status: " + ex.getStatus());
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
 
+
+
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
-        // Customize the error message
-        System.out.println("Access Denied: You do not have permission to access this resource.");
-        String errorMessage = "Access Denied: You do not have permission to access this resource.";
-
-        ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.FORBIDDEN.value(),
-                HttpStatus.FORBIDDEN.getReasonPhrase(),
-                errorMessage // Use the custom message
-        );
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+    public ResponseEntity<String> handleAccessDeniedException(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied: " + ex.getMessage());
     }
 
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
@@ -89,6 +78,11 @@ public class GlobalExceptionHandler {
         Map<String, String> response = new HashMap<>();
         response.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(DeletionException.class)
+    public ResponseEntity<String> handleDeletionException(DeletionException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
     }
 
 }
