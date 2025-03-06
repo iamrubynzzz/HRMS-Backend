@@ -170,7 +170,7 @@ public class UserServiceImpl implements UserService {
         // Validate manager ID based on the user's role
         if (user.getRole() == Role.MANAGER) {
             // Automatically find an ADMIN to assign as the manager for the user whose role is manager
-            User adminManager = userRepository.findFirstByRole(Role.ADMIN)
+            User adminManager = userRepository.findFirstByRoleAndCompany(Role.ADMIN, approver.getCompany())
                     .orElseThrow(() -> new GenericException("No ADMIN found to assign as manager.", HttpStatus.NOT_FOUND));
 
             managerIdToAssign = adminManager.getId(); // Assign admin as manager

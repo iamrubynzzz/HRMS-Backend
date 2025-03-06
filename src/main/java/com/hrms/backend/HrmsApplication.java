@@ -39,23 +39,23 @@ public class HrmsApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            boolean adminExists = userRepository.existsByRole(Role.ADMIN);
-            if (!adminExists) {
-                User adminUser = User.builder()
+            boolean superAdminExists = userRepository.existsByRole(Role.SUPER_ADMIN);
+            if (!superAdminExists) {
+                User superAdminUser = User.builder()
                         .email(adminEmail)
                         .name("Rubina Thapa")
-                        .role(Role.ADMIN)
+                        .role(Role.SUPER_ADMIN)
                         .password(passwordEncoder.encode(adminPassword))
-                        .status(Status.APPROVED)  // Set status as Approved
+                        .status(Status.APPROVED)
                         .build();
 
-                userRepository.save(adminUser);
-                System.out.println("Admin user created successfully.");
+                userRepository.save(superAdminUser);
+                System.out.println("Super Admin user created successfully.");
             } else {
-                System.out.println("Admin user already exists.");
+                System.out.println("Super Admin user already exists.");
             }
         } catch (Exception e) {
-            throw new GenericException("Error creating Admin user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new GenericException("Error creating Super admin user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

@@ -9,6 +9,9 @@ import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import com.hrms.backend.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -68,6 +71,45 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendanceRepository.findByStatusAndDateBetween(attendanceStatus, startDate, endDate);
     }
 
+    @Override
+    public Page<AttendanceDTO> getAllUsersAttendance(
+            String name,
+            LocalDate startDate,
+            LocalDate endDate,
+            String status,
+            int page,
+            int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Convert status string to enum safely
+        AttendanceStatus attendanceStatus = null;
+        if (status != null && !status.isEmpty()) {
+            try {
+                attendanceStatus = AttendanceStatus.valueOf(status.toUpperCase()); // Convert to uppercase to match enum
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid attendance status: " + status);
+            }
+        }
+
+        // Fetch attendance with filtering by status
+        Page<Attendance> attendancePage = attendanceRepository.findAllFiltered(
+                name, startDate, endDate, attendanceStatus, pageable);
+
+        // Convert entities to DTOs
+        return attendancePage.map(this::convertToDTO);
+    }
+
+    @Override
+    public Page<AttendanceDTO> getEmployeeAttendance(Long employeeId, LocalDate startDate, LocalDate endDate, AttendanceStatus attendanceStatus, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Call the repository with filters
+        Page<Attendance> attendancePage = attendanceRepository.findByEmployeeIdAndFilters(employeeId, startDate, endDate, attendanceStatus, pageable);
+
+        return attendancePage.map(this::convertToDTO);
+    }
+
 
 
     private AttendanceStatus determineStatus(LocalDate date) {
@@ -94,5 +136,6 @@ public class AttendanceServiceImpl implements AttendanceService {
                 attendance.getStatus()
         );
     }
+
 
 }

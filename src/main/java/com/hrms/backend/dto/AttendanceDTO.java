@@ -1,5 +1,6 @@
 package com.hrms.backend.dto;
 
+import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.AttendanceStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;

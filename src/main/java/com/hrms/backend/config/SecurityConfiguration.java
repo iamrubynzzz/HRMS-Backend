@@ -45,7 +45,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/v1/manager/**").hasAnyAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/user/details").authenticated()
-                        .requestMatchers("/api/v1/user/**").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers("/api/v1/user/**").hasAnyAuthority(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                         .requestMatchers("/api/attendance/**").authenticated()
                         .requestMatchers("/api/leave/apply").permitAll()
                         .requestMatchers("/api/leave/approve/**").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())

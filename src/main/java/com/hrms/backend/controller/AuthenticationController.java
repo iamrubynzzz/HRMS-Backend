@@ -10,7 +10,9 @@ import com.hrms.backend.repository.SalaryRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.AttendanceService;
 import com.hrms.backend.services.AuthenticationService;
+import com.hrms.backend.services.EmailService;
 import com.hrms.backend.services.SalaryService;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
     private final AttendanceService attendanceService;
+    private final EmailService emailService;
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@RequestBody SignUpRequest signUpRequest) {
         try {

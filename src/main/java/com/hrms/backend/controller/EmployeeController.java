@@ -43,7 +43,7 @@ public class EmployeeController {
 
     // Create a new employee
     @PostMapping("/create")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<String> createUser(@RequestBody UserRequestDTO userRequestDTO) {
         employeeService.createUser(userRequestDTO, new UserInfo());
         return ResponseEntity.ok("User created successfully");
