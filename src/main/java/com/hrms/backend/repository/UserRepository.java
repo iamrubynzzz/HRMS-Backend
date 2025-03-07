@@ -1,5 +1,6 @@
 package com.hrms.backend.repository;
 
+import com.hrms.backend.entities.Company;
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.Status;
@@ -19,6 +20,7 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
 
     // Existing methods
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailAndCompany(String email, Company company);
     User findByRole(Role role);
     boolean existsByRole(Role role);
     boolean existsByEmail(String email);
@@ -26,7 +28,6 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
     Optional<User> findById(int id);
     Optional<User> findByRfid(String rfid);
     boolean existsByRfid(String rfid);
-    Optional<User> findFirstByRole(Role role);
 
 
     // New method for filtering and pagination
@@ -41,4 +42,6 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
             @Param("status") Status status,
             Pageable pageable
     );
+
+    Optional<User> findFirstByRoleAndCompany(Role role, Company company);
 }

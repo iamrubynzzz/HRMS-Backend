@@ -4,13 +4,17 @@ import com.hrms.backend.dto.JwtAuthenticationResponse;
 import com.hrms.backend.dto.LoginRequest;
 import com.hrms.backend.dto.RefreshTokenRequest;
 import com.hrms.backend.dto.SignUpRequest;
+import com.hrms.backend.entities.Company;
+import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.exception.GenericException;
+import com.hrms.backend.repository.CompanyRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.AuthenticationService;
 import com.hrms.backend.services.JWTService;
 import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,15 +33,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JWTService jwtService;
+    private final CompanyRepository companyRepository;
 
     @Autowired
     public AuthenticationServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
                                      AuthenticationManager authenticationManager,
-                                     @Qualifier("JWTServiceImpl") JWTService jwtService) {
+                                     @Qualifier("JWTServiceImpl") JWTService jwtService, CompanyRepository companyRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.companyRepository = companyRepository;
     }
 
     //Sign up logic
@@ -58,19 +64,35 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public JwtAuthenticationResponse login(LoginRequest loginRequest) {
         try {
             System.out.println("Attempting authentication for: " + loginRequest.getEmail());
-            var user = userRepository.findByEmail(loginRequest.getEmail())
-                    .orElse(null);
 
-            if (user == null) {
-                throw new GenericException("Invalid email or password.", HttpStatus.UNAUTHORIZED);
-            }
+            // Find the user by email
+            var user = userRepository.findByEmail(loginRequest.getEmail())
+                    .orElseThrow(() -> new GenericException("Invalid email or password.", HttpStatus.UNAUTHORIZED));
 
             // Check if the user is approved
             if (user.getStatus() != Status.APPROVED) {
-                System.out.println("User  is not approved: " + user.getEmail());
+                System.out.println("User is not approved: " + user.getEmail());
                 throw new GenericException("Your account is not approved yet. Please wait for approval.", HttpStatus.FORBIDDEN);
             }
 
+            // Skip company validation for Super Admin
+            if (user.getRole() != Role.SUPER_ADMIN) {
+                // For Admin, Manager, and Employee, company name is required
+                if (loginRequest.getCompanyName() == null || loginRequest.getCompanyName().isEmpty()) {
+                    throw new GenericException("Company name is required for login.", HttpStatus.BAD_REQUEST);
+                }
+
+                // Validate the company
+                Company company = companyRepository.findByName(loginRequest.getCompanyName())
+                        .orElseThrow(() -> new GenericException("Invalid company name.", HttpStatus.BAD_REQUEST));
+
+                // Check if the user belongs to the specified company
+                if (!user.getCompany().equals(company)) {
+                    throw new GenericException("User does not belong to the specified company.", HttpStatus.FORBIDDEN);
+                }
+            }
+
+            // Authenticate the user
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(), loginRequest.getPassword()
@@ -79,6 +101,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             System.out.println("Authentication successful, generating tokens...");
 
+            // Generate JWT and refresh token
             var jwt = jwtService.generateToken(user);
             var refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
 
@@ -97,7 +120,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new GenericException("An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
 
 

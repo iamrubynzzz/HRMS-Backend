@@ -14,13 +14,15 @@ public class UserResponseDTO {
     private String email;
     private Role role;
     private String address;
+    private String rfid;
     private String contact;
     private LocalDate dateOfBirth;
     private String gender;
     private LocalDate hireDate;
     private Double salary;
     private int managerId;
-
+    private Integer annualLeaveBalance;
+    private Integer sickLeaveBalance;
 
     //The constructor maps fields from User and UserInfo to the UserResponseDTO
     public UserResponseDTO(User user, UserInfo userInfo, Integer managerId) {
@@ -28,6 +30,8 @@ public class UserResponseDTO {
         this.name = user.getName();
         this.email = user.getEmail();
         this.role = user.getRole();
+        this.rfid= user.getRfid();
+
         this.managerId = managerId != null ? managerId : 0;
         if (userInfo != null) {
             this.address = userInfo.getAddress();
@@ -36,6 +40,8 @@ public class UserResponseDTO {
             this.salary = userInfo.getSalary();
             this.dateOfBirth = userInfo.getDateOfBirth();
             this.hireDate = userInfo.getHireDate();
+            this.annualLeaveBalance = userInfo.getAnnualLeaveBalance();
+            this.sickLeaveBalance = userInfo.getSickLeaveBalance();
         }
     }
 }

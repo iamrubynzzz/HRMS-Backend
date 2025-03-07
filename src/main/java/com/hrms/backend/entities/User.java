@@ -38,6 +38,10 @@ public class User implements UserDetails {
     @ToString.Exclude // Prevent recursion in toString()
     @JsonIgnore
     private UserInfo userInfo;  // Reference to the UserInfo entity
+
+    @ManyToOne
+    @JoinColumn(name = "company_id", nullable = true) // Super Admin may not have a company
+    private Company company;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
