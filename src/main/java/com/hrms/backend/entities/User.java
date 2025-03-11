@@ -29,6 +29,9 @@ public class User implements UserDetails {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Token> tokens;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private Status status = Status.PENDING;
@@ -41,6 +44,7 @@ public class User implements UserDetails {
 
     @ManyToOne
     @JoinColumn(name = "company_id", nullable = true) // Super Admin may not have a company
+    @JsonIgnore
     private Company company;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

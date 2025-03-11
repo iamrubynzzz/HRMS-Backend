@@ -1,5 +1,7 @@
 package com.hrms.backend.config;
 
+import com.hrms.backend.repository.TokenRepository;
+import com.hrms.backend.entities.Token;
 import com.hrms.backend.services.JWTService;
 import com.hrms.backend.services.impl.UserServiceImpl;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -20,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Qualifier("JWTServiceImpl")
     private final JWTService jwtService;
     private final UserServiceImpl userService;
+    private final TokenRepository tokenRepository;
     private final HttpSession session;
 
     @Override
@@ -57,8 +61,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Extract username (email) from JWT
             userEmail = jwtService.extractUsername(jwt);
             session.setAttribute("email", userEmail);
+
             if (StringUtils.hasText(userEmail) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userService.userDetailsService().loadUserByUsername(userEmail);
+
+                // ✅ Check if the token is revoked
+                if (isTokenRevoked(jwt)) {
+                    handleAuthError(response, "Token has been revoked. Please log in again.");
+                    return; // Prevent further processing
+                }
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     // Create a new authentication token
@@ -84,6 +95,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // ✅ New method to check if token is revoked
+    private boolean isTokenRevoked(String jwt) {
+        Optional<Token> storedToken = tokenRepository.findByAccessToken(jwt);
+        return storedToken.map(Token::isLoggedOut).orElse(true); // If token not found, assume revoked
+    }
     private void handleAuthError(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");

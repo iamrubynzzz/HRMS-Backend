@@ -12,7 +12,9 @@ import com.hrms.backend.services.AttendanceService;
 import com.hrms.backend.services.AuthenticationService;
 import com.hrms.backend.services.EmailService;
 import com.hrms.backend.services.SalaryService;
+import com.nimbusds.openid.connect.sdk.LogoutRequest;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +63,12 @@ public class AuthenticationController {
     public ResponseEntity<JwtAuthenticationResponse> login(@RequestBody LoginRequest loginRequest) {
         JwtAuthenticationResponse response = authenticationService.login(loginRequest);
         return ResponseEntity.ok(response); // Return JWT and refresh token
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        authenticationService.logout(request);
+        return ResponseEntity.ok("Logout successful");
     }
 
     @PostMapping("/refresh")

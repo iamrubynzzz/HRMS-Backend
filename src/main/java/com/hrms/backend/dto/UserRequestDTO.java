@@ -9,7 +9,6 @@ import java.time.LocalDate;
 public class UserRequestDTO {
     private String name;
     private String email;
-    private String password;
     private Role role;
     private String address;
     private String contact;
@@ -17,7 +16,7 @@ public class UserRequestDTO {
     private String gender;
     private LocalDate hireDate;
     private Double salary;
-    private int managerId;
+    private Integer  managerId;
     private String rfid;
     private Integer  annualLeaveBalance;
     private Integer  sickLeaveBalance;

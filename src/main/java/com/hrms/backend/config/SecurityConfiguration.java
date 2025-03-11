@@ -41,7 +41,9 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS requests
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                       // .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll() // Allow login & refresh token
+                        .requestMatchers("/api/v1/auth/logout").authenticated() // Require authentication for logout
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/v1/manager/**").hasAnyAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/user/details").authenticated()
@@ -52,6 +54,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/leave/all").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())
                         .requestMatchers("/api/leave/**").authenticated()
                         .requestMatchers("/api/requests/**").permitAll()
+                        .requestMatchers("/api/companies").permitAll()
+
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
