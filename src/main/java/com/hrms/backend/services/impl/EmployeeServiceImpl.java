@@ -53,7 +53,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void createUser(UserRequestDTO userRequestDTO, UserInfo userInfo) {
 
         // Check if role is valid
-        if (!userRequestDTO.getRole().equals(Role.ADMIN) && !userRequestDTO.getRole().equals(Role.EMPLOYEE) && !userRequestDTO.getRole().equals(Role.MANAGER)) {
+        if (!userRequestDTO.getRole().equals(Role.ADMIN) &&
+                !userRequestDTO.getRole().equals(Role.EMPLOYEE) &&
+                !userRequestDTO.getRole().equals(Role.MANAGER)) {
             throw new GenericException("Invalid role. Only ADMIN, EMPLOYEE, and MANAGER roles are allowed.", HttpStatus.FORBIDDEN);
         }
 
@@ -127,11 +129,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         Integer managerIdToAssign = null; // Variable to store the manager ID to assign
 
         if (userRequestDTO.getRole() == Role.MANAGER) {
-            // Automatically find an ADMIN to assign as the manager for the user whose role is manager
-            User adminManager = userRepository.findFirstByRoleAndCompany(Role.ADMIN, company)
-                    .orElseThrow(() -> new GenericException("No ADMIN found to assign as manager.", HttpStatus.NOT_FOUND));
+            // Manager must have an Admin assigned as their manager
+            if (Objects.isNull(userRequestDTO.getManagerId())) {
+                throw new GenericException("Admin ID must be provided as manager for a new Manager.", HttpStatus.BAD_REQUEST);
+            }
 
-            managerIdToAssign = adminManager.getId(); // Assign admin as manager
+            User adminManager = userRepository.findById(userRequestDTO.getManagerId())
+                    .orElseThrow(() -> new GenericException("Admin not found with ID: " + userRequestDTO.getManagerId(), HttpStatus.NOT_FOUND));
+
+            if (adminManager.getRole() != Role.ADMIN) {
+                throw new GenericException("The provided Admin ID does not belong to a valid Admin.", HttpStatus.BAD_REQUEST);
+            }
+
+            managerIdToAssign = adminManager.getId(); // Assign the provided Admin as Manager
 
         } else if (userRequestDTO.getRole() == Role.EMPLOYEE && Objects.nonNull(userRequestDTO.getManagerId())) {
             // For Employee roles, validate that the manager exists and is a MANAGER
@@ -160,7 +170,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("--------------------" + user.getId());
+
         if (user.getId() != null) {
             // Save to UserInfo table
             userInfo.setUser(user);
@@ -203,7 +213,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
     }
 
-
     @Override
     public UserResponseDTO getUserById(Integer id) {
         // Fetch user details
@@ -219,61 +228,77 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(EmployeeManager::getManagerId)
                 .orElse(null);
 
-        // Return the response, including managerId
-        return new UserResponseDTO(user, userInfo, managerId);
+        // Fetch manager's name
+        String managerName = (managerId != null) ? userRepository.findById(managerId)
+                .map(User::getName)
+                .orElse("No Manager") : "No Manager";
+
+        // Return the response with managerName
+        return new UserResponseDTO(user, userInfo, managerName);
     }
+
 
 
     @Override
     public Page<UserResponseDTO> getAllUsers(String name, int page, int size) {
-        // Create a Pageable object for pagination
         Pageable pageable = PageRequest.of(page, size);
 
-        // Fetch users with pagination and filtering
         Page<User> usersPage = userRepository.findAllFiltered(
-                name, // Name filter (can be null)
-                Role.EMPLOYEE, // Role filter for EMPLOYEE
-                Role.MANAGER, // Role filter for MANAGER
-                Status.APPROVED, // Status filter for APPROVED
+                name,
+                Role.EMPLOYEE,
+                Role.MANAGER,
+                Status.APPROVED,
                 pageable
         );
 
-        // Map the results to UserResponseDTO
         return usersPage.map(user -> {
-            // Fetch additional information
             UserInfo userInfo = userInfoRepository.findByUserId(user.getId()).orElse(null);
 
-            // Fetch managerId from EmployeeManager
+            // Fetch managerId
             Integer managerId = employeeManagerRepository.findByEmployeeId(user.getId())
                     .map(EmployeeManager::getManagerId)
-                    .orElse(0); // Default to 0 if no managerId is found
+                    .orElse(0);
 
-            // Create and return UserResponseDTO
-            return new UserResponseDTO(user, userInfo, managerId);
+            // Fetch manager's name
+            String managerName = (managerId != 0) ? userRepository.findById(managerId)
+                    .map(User::getName)
+                    .orElse("No Manager") : "No Manager";
+
+            return new UserResponseDTO(user, userInfo, managerName);
         });
     }
+
 
     //Update employee details if needed
     @Override
     public void updateUser(Integer id, UserRequestDTO userRequestDTO) {
-        // Fetch the user by ID or throw exception if not found
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee with ID " + id + " not found"));
 
-        // Update fields only if they are provided
+        // Update fields only if provided
         if (userRequestDTO.getName() != null && !userRequestDTO.getName().isEmpty()) {
             user.setName(userRequestDTO.getName());
         }
 
+        // Update email only if it is changed and unique
         if (userRequestDTO.getEmail() != null && !userRequestDTO.getEmail().isEmpty()
                 && !userRequestDTO.getEmail().equals(user.getEmail())) {
-            // Check if the email is already in use by another user
             if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
                 throw new GenericException("Email " + userRequestDTO.getEmail() + " is already in use.", HttpStatus.CONFLICT);
             }
             user.setEmail(userRequestDTO.getEmail());
         }
 
+        // Update RFID only if it is changed and unique
+        if (userRequestDTO.getRfid() != null && !userRequestDTO.getRfid().isEmpty()
+                && !userRequestDTO.getRfid().equals(user.getRfid())) {
+            if (userRepository.existsByRfid(userRequestDTO.getRfid())) {
+                throw new GenericException("RFID " + userRequestDTO.getRfid() + " is already in use.", HttpStatus.CONFLICT);
+            }
+            user.setRfid(userRequestDTO.getRfid());
+        }
+
+        // Update role if provided
         if (userRequestDTO.getRole() != null) {
             try {
                 Role.valueOf(userRequestDTO.getRole().name());
@@ -286,8 +311,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         userRepository.save(user);
 
         // Update the managerId if provided
-        if (userRequestDTO.getManagerId() != 0) {
-            // Check if the provided managerId exists and has the role of MANAGER
+        if (userRequestDTO.getManagerId() != null && userRequestDTO.getManagerId() != 0) {
             User manager = userRepository.findById(userRequestDTO.getManagerId())
                     .orElseThrow(() -> new GenericException("Manager with ID " + userRequestDTO.getManagerId() + " not found", HttpStatus.NOT_FOUND));
 
@@ -295,7 +319,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 throw new GenericException("User with ID " + userRequestDTO.getManagerId() + " is not a Manager.", HttpStatus.BAD_REQUEST);
             }
 
-            // Update employee-manager relationship
             EmployeeManager employeeManager = employeeManagerRepository.findByEmployeeId(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Employee-Manager relationship for Employee ID " + id + " not found"));
             employeeManager.setManagerId(userRequestDTO.getManagerId());
@@ -331,35 +354,46 @@ public class EmployeeServiceImpl implements EmployeeService {
             userInfo.setSickLeaveBalance(userRequestDTO.getSickLeaveBalance());
         }
 
+        if (userRequestDTO.getSalary() != null) {
+            userInfo.setSalary(userRequestDTO.getSalary());
+        }
 
         userInfoRepository.save(userInfo);
     }
 
-    @Transactional
+
     @Override
     public void deleteUser(Integer id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User  with ID " + id + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User with ID " + id + " not found"));
 
         try {
-            // Delete dependent records if they exist
+            // Log or debug
+            System.out.println("Deleting attendance records for user: " + user.getId());
             attendanceRepository.deleteByUser(user);
+
+            System.out.println("Deleting salary records for user: " + user.getId());
             salaryRepository.deleteByUser(user);
+
+            System.out.println("Deleting request records for user: " + user.getId());
             requestRepository.deleteByUser(user);
 
-            // Delete employee-manager relationship if it exists
+            System.out.println("Deleting employee-manager records for user: " + user.getId());
             employeeManagerRepository.findByEmployeeId(user.getId())
                     .ifPresent(employeeManagerRepository::delete);
 
-            // Delete user info if it exists
+            System.out.println("Deleting user info for user: " + user.getId());
             userInfoRepository.deleteByUserId(user.getId());
 
-            // Finally, delete the user
+            // Delete the user now
+            System.out.println("Deleting user: " + user.getId());
             userRepository.delete(user);
+
         } catch (Exception ex) {
             throw new DeletionException("Failed to delete user with ID: " + id + ". Reason: " + ex.getMessage());
         }
     }
+
 
     public String generateRandomString(int length) {
         String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

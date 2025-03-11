@@ -1,5 +1,6 @@
 package com.hrms.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,5 +40,6 @@ public class Company {
     private LocalDate establishedDate;
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<User> users;
 }

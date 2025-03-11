@@ -20,19 +20,19 @@ public class UserResponseDTO {
     private String gender;
     private LocalDate hireDate;
     private Double salary;
-    private int managerId;
+    private String managerName;
     private Integer annualLeaveBalance;
     private Integer sickLeaveBalance;
 
-    //The constructor maps fields from User and UserInfo to the UserResponseDTO
-    public UserResponseDTO(User user, UserInfo userInfo, Integer managerId) {
+    // Constructor
+    public UserResponseDTO(User user, UserInfo userInfo, String managerName) {
         this.id = user.getId();
         this.name = user.getName();
         this.email = user.getEmail();
         this.role = user.getRole();
-        this.rfid= user.getRfid();
+        this.rfid = user.getRfid();
 
-        this.managerId = managerId != null ? managerId : 0;
+        this.managerName = managerName != null ? managerName : "No Manager"; // Default if no manager found
         if (userInfo != null) {
             this.address = userInfo.getAddress();
             this.contact = userInfo.getContact();
@@ -45,3 +45,4 @@ public class UserResponseDTO {
         }
     }
 }
+
