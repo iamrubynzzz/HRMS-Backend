@@ -55,6 +55,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/leave/**").authenticated()
                         .requestMatchers("/api/requests/**").permitAll()
                         .requestMatchers("/api/companies").permitAll()
+                        .requestMatchers("/api/v1/salaries/**").hasAuthority(Role.ADMIN.name())
 
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
