@@ -7,6 +7,8 @@ import com.hrms.backend.repository.SalaryRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.SalaryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -93,8 +95,12 @@ public class SalaryServiceImpl implements SalaryService {
         salaryEntity.setUser(employee);
         salaryEntity.setGrossSalary(presentDaySalary + overtimePay);
         salaryEntity.setTaxDeduction(taxDeduction);
-        salaryEntity.setNetSalary(netSalary);
+        salaryEntity.setNetSalary((float) netSalary);
         salaryEntity.setCalculationDate(LocalDate.now());
+
+        // Set the status to PENDING_REVIEW before saving
+        salaryEntity.setStatus(SalaryStatus.PENDING_REVIEW);
+
         salaryRepository.save(salaryEntity);
 
         System.out.println("Salary calculated for: " + employee.getName() + " | Net Salary: " + netSalary);
@@ -108,6 +114,13 @@ public class SalaryServiceImpl implements SalaryService {
         }
         System.out.println("Salaries calculated for all employees.");
     }
+
+
+    public Page<Salary> getSalaries(String employeeName, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        return salaryRepository.findSalaries(employeeName, startDate, endDate, pageable);
+    }
+
+
 
     public static int getWorkingDaysOfMonth(int year, int month) {
         YearMonth yearMonth = YearMonth.of(year, month);

@@ -12,13 +12,17 @@ public class Salary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    private SalaryStatus status;
+
+
     @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     private double grossSalary;
     private double taxDeduction;
-    private double netSalary;
+    private float netSalary;
     private LocalDate calculationDate;
     private int overtimeHoursTotal;
     private float overtimePayTotal;
