@@ -40,5 +40,12 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
                               @Param("endDate") LocalDate endDate,
                               Pageable pageable);
 
+    @Query("SELECT s FROM Salary s WHERE (:employeeName IS NULL OR s.user.name LIKE %:employeeName%) " +
+            "AND (:startDate IS NULL OR s.calculationDate >= :startDate) " +
+            "AND (:endDate IS NULL OR s.calculationDate <= :endDate) " +
+            "AND (s.status = 'RELEASED')")
+    List<Salary> findSalaries(@Param("employeeName") String employeeName,
+                              @Param("startDate") LocalDate startDate,
+                              @Param("endDate") LocalDate endDate);
 
 }

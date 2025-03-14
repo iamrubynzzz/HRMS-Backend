@@ -10,49 +10,59 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Service
+
 public class EmailServiceImpl implements EmailService {
     @Autowired
     private JavaMailSender mailSender;
     @Autowired
     private EmailMessageRepository emailMessageRepository;
 
-    public boolean sendEmail(String to, String subject, String content) throws MessagingException {
+    @Async
+    public CompletableFuture<Boolean> sendEmail(String to, String subject, String content) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
         helper.setTo(to);
         helper.setSubject(subject);
         helper.setText(content, true);
+
         try {
             mailSender.send(message);
-            return true;
+            return CompletableFuture.completedFuture(true);
         } catch (Exception e) {
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
-
     }
+
 
     @Override
     public void processEmail() {
         List<EmailMessage> emailMessages = emailMessageRepository.findByStatus(EmailStatus.PENDING);
+
         emailMessages.forEach(emailMessage -> {
             try {
-                boolean sent = sendEmail(emailMessage.getRecipientAddress(), emailMessage.getSubject(), emailMessage.getMessage());
-                if (sent) {
-                    emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.SUCCESS);
-                } else {
-                    emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.FAILED);
-                }
-            } catch (MessagingException e) {
-                throw new RuntimeException(e);
+                CompletableFuture<Boolean> future = sendEmail(emailMessage.getRecipientAddress(), emailMessage.getSubject(), emailMessage.getMessage());
+
+                future.thenAccept(sent -> {
+                    if (sent) {
+                        emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.SUCCESS);
+                    } else {
+                        emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.FAILED);
+                    }
+                });
+
+            } catch (Exception e) {
+                emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.FAILED);
+                e.printStackTrace();
             }
         });
-
     }
 }

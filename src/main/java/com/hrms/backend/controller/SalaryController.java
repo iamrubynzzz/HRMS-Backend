@@ -1,17 +1,24 @@
 package com.hrms.backend.controller;
 
 import com.hrms.backend.dto.SalaryDTO;
-import com.hrms.backend.entities.Salary;
-import com.hrms.backend.entities.SalaryStatus;
+import com.hrms.backend.entities.*;
+import com.hrms.backend.exception.ResourceNotFoundException;
+import com.hrms.backend.repository.EmailMessageRepository;
 import com.hrms.backend.repository.SalaryRepository;
+import com.hrms.backend.services.EmailService;
+import com.hrms.backend.services.SalaryReportService;
 import com.hrms.backend.services.SalaryService;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +37,15 @@ public class SalaryController {
 
     @Autowired
     private SalaryService salaryService;
+    private final EmailService emailService;
+    private final EmailMessageRepository emailMessageRepository;
+
+    @Autowired
+    private SalaryReportService salaryReportService;
+    public SalaryController(EmailService emailService, EmailMessageRepository emailMessageRepository) {
+        this.emailService = emailService;
+        this.emailMessageRepository = emailMessageRepository;
+    }
 
     @PostMapping("/calculate")
     public ResponseEntity<String> calculateSalaries() {
@@ -71,19 +87,17 @@ public class SalaryController {
         Page<SalaryDTO> salaryDTOs = salaries.map(salary -> new SalaryDTO(
                 salary.getId(),
                 salary.getUser().getName(),
-                salary.getStatus(),
                 salary.getGrossSalary(),
                 salary.getTaxDeduction(),
                 salary.getOvertimePayTotal(),
                 salary.getAllowanceAmountTotal(),
                 salary.getNetSalary(),
-                salary.getCalculationDate()
+                salary.getCalculationDate(),
+                salary.getStatus()
         ));
 
         return ResponseEntity.ok(salaryDTOs);
     }
-
-
 
     //API to approve salary
     @PutMapping("/approve/{salaryId}")
@@ -100,26 +114,60 @@ public class SalaryController {
 
     //API to release salary
     @PutMapping("/release/{salaryId}")
-    public ResponseEntity<String> releaseSalary(@PathVariable Long salaryId) {
-        Optional<Salary> salary = salaryRepository.findById(salaryId);
-        if (salary.isPresent()) {
-            Salary s = salary.get();
-            if (s.getStatus() == SalaryStatus.APPROVED) {
-                s.setStatus(SalaryStatus.RELEASED);
-                salaryRepository.save(s);
-                return ResponseEntity.ok("Salary released successfully.");
-            }
+    public ResponseEntity<String> releaseSalary(@PathVariable Long salaryId) throws MessagingException {
+        Salary salary = salaryRepository.findById(salaryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Salary not found"));
+
+        if (salary.getStatus() != SalaryStatus.APPROVED) {
             return ResponseEntity.badRequest().body("Salary must be approved before release.");
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Salary not found.");
+
+        // Update status to RELEASED
+        salary.setStatus(SalaryStatus.RELEASED);
+        salaryRepository.save(salary);
+
+        // Send Email Notification
+        User user = salary.getUser();
+        String recipientEmail = user.getEmail();
+        String subject = "Salary Released for " + salary.getCalculationDate();
+        String emailContent = "<h1>Salary Details</h1>" +
+                "<p>Dear " + user.getName() + ",</p>" +
+                "<p>Your salary for <strong>" + salary.getCalculationDate() + "</strong> has been released.</p>" +
+                "<p><strong>Gross Salary:</strong> " + salary.getGrossSalary() + "</p>" +
+                "<p><strong>Tax Deduction:</strong> " + salary.getTaxDeduction() + "</p>" +
+                "<p><strong>Net Salary:</strong> " + salary.getNetSalary() + "</p>" +
+                "<br/><p>Regards,<br/>Rubina Thapa</p>";
+
+        // Save Email Message to DB
+        EmailMessage emailMessage = new EmailMessage();
+        emailMessage.setRecipientAddress(recipientEmail);
+        emailMessage.setSubject(subject);
+        emailMessage.setMessage(emailContent);
+        emailMessage.setCompanyName(user.getCompany().getName());
+        emailMessage.setStatus(EmailStatus.PENDING);
+        emailMessageRepository.save(emailMessage);
+
+        // Send Email
+        emailService.sendEmail(recipientEmail, subject, emailContent);
+
+        return ResponseEntity.ok("Salary released successfully and email notification sent.");
     }
-
-
 
     // GET API to retrieve salaries for a specific user
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Salary>> getSalariesByUser(@PathVariable int userId) {
         List<Salary> salaries = salaryRepository.findByUserId(userId);
         return ResponseEntity.ok(salaries);
+    }
+
+    //API to generate salary report
+    @GetMapping("/{salaryId}/report")
+    public ResponseEntity<String> downloadSalaryReport(@PathVariable Long salaryId) {
+        String filePath = salaryReportService.generateSalaryReportById(salaryId);
+
+        // Return the file path in the response
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_PLAIN)
+                .body("Salary report saved to: " + filePath);
     }
 }
