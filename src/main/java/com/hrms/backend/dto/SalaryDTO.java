@@ -11,12 +11,12 @@ import java.time.LocalDate;
 public class SalaryDTO {
     private Long id;
     private String employeeName;
-    private SalaryStatus status;
     private double grossSalary;
     private double taxDeduction;
-    private double netSalary;
     private float overtimePayTotal;
     private float allowanceAmountTotal;
+    private double netSalary;
     private LocalDate calculationDate;
+    private SalaryStatus status;
 }
 
