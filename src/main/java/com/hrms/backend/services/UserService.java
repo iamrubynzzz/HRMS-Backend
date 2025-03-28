@@ -35,4 +35,9 @@ public interface UserService {
     Optional<User> findByUsername(String username);
 
 
+    List<User> getAllEmployees();
+
+    void updatePassword(String email, String newPassword);
+
+   // User findByEmail(String email);
 }

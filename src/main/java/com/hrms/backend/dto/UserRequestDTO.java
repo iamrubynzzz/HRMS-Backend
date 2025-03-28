@@ -21,4 +21,5 @@ public class UserRequestDTO {
     private Integer  annualLeaveBalance;
     private Integer  sickLeaveBalance;
     private Integer companyId;
+    private String companyName;
 }

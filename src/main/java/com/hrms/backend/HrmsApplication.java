@@ -17,7 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @EnableAsync
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.hrms.backend")
 @EnableScheduling
 public class HrmsApplication implements CommandLineRunner {
 

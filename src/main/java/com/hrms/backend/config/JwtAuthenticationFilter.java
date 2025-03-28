@@ -37,10 +37,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-      /*  String requestURI = request.getRequestURI();
+        //String requestURI = request.getRequestURI();
 
-        // Skip filter for specific endpoints (e.g., clock-in/out API)
-        if (requestURI.startsWith("/api/v1/attendance/attendance")) {
+        /* Skip JWT filter for public endpoints
+        if (shouldSkipFilter(requestURI)) {
             filterChain.doFilter(request, response);
             return;
         }*/
@@ -48,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
-
+        System.out.println("JWT Filter triggered for: " + request.getRequestURI());
         // Check if the request has a valid Authorization header starting with Bearer
         if (StringUtils.isEmpty(authHeader) || !org.apache.commons.lang3.StringUtils.startsWith(authHeader, "Bearer ")) {
             filterChain.doFilter(request, response);
@@ -65,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(userEmail) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userService.userDetailsService().loadUserByUsername(userEmail);
 
-                // ✅ Check if the token is revoked
+                //  Check if the token is revoked
                 if (isTokenRevoked(jwt)) {
                     handleAuthError(response, "Token has been revoked. Please log in again.");
                     return; // Prevent further processing
@@ -85,17 +85,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (ExpiredJwtException e) {
             handleAuthError(response, "Token has expired. Please log in again.");
-            return; // Prevent further processing
+            return;
         } catch (Exception e) {
             handleAuthError(response, "Invalid token.");
-            return; // Prevent further processing
+            return;
         }
 
         // Proceed with the filter chain
         filterChain.doFilter(request, response);
     }
 
-    // ✅ New method to check if token is revoked
+    private boolean shouldSkipFilter(String requestURI) {
+        return requestURI.startsWith("/api/v1/forgot-password") ||
+                requestURI.startsWith("/api/v1/reset-password") ||
+                requestURI.startsWith("/api/v1/attendance/attendance");
+    }
+
+    //  New method to check if token is revoked
     private boolean isTokenRevoked(String jwt) {
         Optional<Token> storedToken = tokenRepository.findByAccessToken(jwt);
         return storedToken.map(Token::isLoggedOut).orElse(true); // If token not found, assume revoked

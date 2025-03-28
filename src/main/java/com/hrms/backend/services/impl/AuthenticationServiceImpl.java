@@ -37,6 +37,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final CompanyRepository companyRepository;
     private final TokenRepository tokenRepository;
 
+
     @Autowired
     public AuthenticationServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
                                      AuthenticationManager authenticationManager,
@@ -48,6 +49,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         this.companyRepository = companyRepository;
         this.tokenRepository = tokenRepository;
     }
+
+
 
     //Sign up logic
     public User signup(SignUpRequest signUpRequest) {
@@ -147,6 +150,33 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         revokeAllTokensByUser(user);
     }
 
+    @Override
+    public JwtAuthenticationResponse handleOAuth2Login(String email) throws GenericException {
+        // Find the user by email
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new GenericException("User not registered. Please contact your admin to create an account.", HttpStatus.FORBIDDEN));
+
+        // Check if the user is approved
+        if (user.getStatus() != Status.APPROVED) {
+            throw new GenericException("Your account is not approved yet. Please wait for approval.", HttpStatus.FORBIDDEN);
+        }
+
+        // Revoke old tokens to ensure only the new token is valid
+        revokeAllTokensByUser(user);
+
+        // Generate new JWT and refresh token
+        var jwt = jwtService.generateToken(user);
+        var refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
+
+        saveUserToken(user, jwt, refreshToken);
+
+        JwtAuthenticationResponse jwtAuthenticationResponse = new JwtAuthenticationResponse();
+        jwtAuthenticationResponse.setToken(jwt);
+        jwtAuthenticationResponse.setRefreshToken(refreshToken);
+        jwtAuthenticationResponse.setRole(user.getRole());
+
+        return jwtAuthenticationResponse;
+    }
 
     // Helper method to store user tokens
     private void saveUserToken(User user, String accessToken, String refreshToken) {

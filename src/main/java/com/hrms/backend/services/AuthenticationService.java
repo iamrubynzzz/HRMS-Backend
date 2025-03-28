@@ -5,6 +5,7 @@ import com.hrms.backend.dto.LoginRequest;
 import com.hrms.backend.dto.RefreshTokenRequest;
 import com.hrms.backend.dto.SignUpRequest;
 import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.GenericException;
 import com.nimbusds.openid.connect.sdk.LogoutRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -14,4 +15,6 @@ public interface AuthenticationService {
     JwtAuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest);
 
     void logout(HttpServletRequest request);
+
+    JwtAuthenticationResponse handleOAuth2Login(String email) throws GenericException;;
 }

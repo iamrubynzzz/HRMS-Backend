@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/companies")
-@CrossOrigin(origins = "*") // Allow frontend requests from any origin
+@CrossOrigin(origins = "http://localhost:3000")
 public class CompanyController {
 
     @Autowired

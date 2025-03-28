@@ -1,5 +1,6 @@
 package com.hrms.backend.services.impl;
 
+import com.hrms.backend.entities.User;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.services.JWTService;
 import io.jsonwebtoken.Claims;
@@ -15,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.security.Key;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 
 
@@ -49,6 +50,7 @@ public class JWTServiceImpl implements JWTService {
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
 
     // Extract username from token
     public String extractUsername(String token) {

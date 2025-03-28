@@ -8,6 +8,7 @@ import com.hrms.backend.repository.AttendanceRepository;
 import com.hrms.backend.repository.RequestRepository;
 import com.hrms.backend.repository.UserInfoRepository;
 import com.hrms.backend.repository.UserRepository;
+import com.hrms.backend.services.NotificationService;
 import com.hrms.backend.services.RequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,7 +31,7 @@ public class RequestServiceImpl implements RequestService {
     private final UserRepository userRepository;
     private final UserInfoRepository userInfoRepository;
     private final AttendanceRepository attendanceRepository;
-
+    private final NotificationService notificationService;
     @Override
     public RequestDTO createRequest(RequestDTO requestDTO) {
         // Validate the request
@@ -41,11 +42,11 @@ public class RequestServiceImpl implements RequestService {
             throw new GenericException("User ID must be provided.", HttpStatus.BAD_REQUEST);
         }
 
-        // Parse userId to Long (in case it's sent as a different type)
-        Long userId = Long.parseLong(requestDTO.getUserId().toString());
+        // Parse userId to Long
+        Long userId = Long.parseLong(String.valueOf(requestDTO.getUserId()));
 
         // Fetch the user from the database
-        User user = userRepository.findById(userId.intValue()) // Convert Long to int if needed
+        User user = userRepository.findById(Math.toIntExact(userId))
                 .orElseThrow(() -> new GenericException("User with ID " + userId + " not found", HttpStatus.NOT_FOUND));
 
         // Create a new Request entity
@@ -55,12 +56,10 @@ public class RequestServiceImpl implements RequestService {
 
         // Set dates for allowance request if they are null
         if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.ALLOWANCE.name())) {
-            // For allowance, set both start and end date to today's date
             LocalDate currentDate = LocalDate.now();
             request.setStartDate(currentDate);
             request.setEndDate(currentDate);
         } else {
-            // For other request types, use the provided dates
             request.setStartDate(requestDTO.getStartDate());
             request.setEndDate(requestDTO.getEndDate());
         }
@@ -75,7 +74,6 @@ public class RequestServiceImpl implements RequestService {
                 requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) ||
                 requestDTO.getRequestType().equalsIgnoreCase(RequestType.UNPAID_ANNUAL_LEAVE.name()) ||
                 requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
-            // Calculate the number of leave days
             long daysBetween = ChronoUnit.DAYS.between(requestDTO.getStartDate(), requestDTO.getEndDate()) + 1;
             request.setLeaveDays((int) daysBetween);
         }
@@ -86,12 +84,24 @@ public class RequestServiceImpl implements RequestService {
             request.setEndDate(requestDTO.getStartDate());
         }
 
-        // Save the request to the database
+        // Save the request
         Request savedRequest = requestRepository.save(request);
 
-        // Return the saved request as DTO
-        return mapToDTO(savedRequest);
+        // Send notification to all Admins
+        List<User> admins = userRepository.findAllByRole(Role.ADMIN);
+        for (User admin : admins) {
+            notificationService.sendNotification(
+                    admin,
+                    "New request created by " + user.getUsername(),
+                    NotificationType.REQUEST
+            );
+        }
+
+        // Convert and return the saved request as DTO
+        return new RequestDTO(savedRequest);
     }
+
+
 
     private void validateRequest(RequestDTO requestDTO) {
         // Validation for Leave Requests (PAID_LEAVE and UNPAID_LEAVE)
@@ -244,20 +254,7 @@ public class RequestServiceImpl implements RequestService {
 
 
     private RequestDTO mapToDTO(Request request) {
-        RequestDTO dto = new RequestDTO();
-        dto.setId(request.getId());
-        dto.setUserId(Long.valueOf(request.getUser().getId()));
-        dto.setRequestType(request.getRequestType().toString());
-        dto.setStartDate(request.getStartDate());
-        dto.setEndDate(request.getEndDate());
-        dto.setLeaveDays(request.getLeaveDays());
-        dto.setReason(request.getReason());
-        dto.setAllowanceAmount(request.getAllowanceAmount());
-        dto.setOvertimeHours(request.getOvertimeHours());
-        dto.setStatus(request.getStatus().toString());
-        dto.setEmployeeName(request.getUser().getName());
-        return dto;
-
+        return new RequestDTO(request);
     }
 
     @Override

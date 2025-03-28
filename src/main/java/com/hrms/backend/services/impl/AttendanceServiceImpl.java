@@ -110,6 +110,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendancePage.map(this::convertToDTO);
     }
 
+    public long countByStatusAndDate(AttendanceStatus status, LocalDate date) {
+        return attendanceRepository.countByStatusAndDate(status, date);
+    }
+
 
 
     private AttendanceStatus determineStatus(LocalDate date) {

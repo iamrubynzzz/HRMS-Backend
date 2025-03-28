@@ -24,16 +24,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*")
 public class AttendanceController {
     private final AttendanceService attendanceService;
     private final RequestService requestService;
@@ -146,5 +142,28 @@ public class AttendanceController {
 
         Page<AttendanceDTO> attendancePage = attendanceService.getEmployeeAttendance(employeeId, startDate, endDate, attendanceStatus, page, size);
         return ResponseEntity.ok(attendancePage);
+    }
+
+
+// To show attendance in pie-chart
+    @GetMapping("/stats/today")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Long>> getAttendanceStatsForToday() {
+        LocalDate today = LocalDate.now();
+
+        long presentCount = attendanceService.countByStatusAndDate(AttendanceStatus.PRESENT, today);
+        long absentCount = attendanceService.countByStatusAndDate(AttendanceStatus.ABSENT, today);
+
+        // Combine all leave types
+        long leaveCount = attendanceService.countByStatusAndDate(AttendanceStatus.ANNUAL_LEAVE, today) +
+                attendanceService.countByStatusAndDate(AttendanceStatus.SICK_LEAVE, today) +
+                attendanceService.countByStatusAndDate(AttendanceStatus.UNPAID_LEAVE, today);
+
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("Present", presentCount);
+        stats.put("Absent", absentCount);
+        stats.put("Leave", leaveCount);
+
+        return ResponseEntity.ok(stats);
     }
 }

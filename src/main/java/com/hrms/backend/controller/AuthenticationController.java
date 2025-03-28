@@ -5,6 +5,7 @@ import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.Salary;
 import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.AttendanceRepository;
 import com.hrms.backend.repository.SalaryRepository;
 import com.hrms.backend.repository.UserRepository;
@@ -18,7 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -40,7 +43,6 @@ public class AuthenticationController {
         try {
             Role role = Role.fromString(String.valueOf(signUpRequest.getRole()));
 
-            // Check if the role is Admin, which should not be allowed for signup
             if (role == Role.ADMIN) {
                 return ResponseEntity.badRequest().body("Admin role is not allowed for signup.");
             }
@@ -71,6 +73,7 @@ public class AuthenticationController {
         return ResponseEntity.ok("Logout successful");
     }
 
+
     @PostMapping("/refresh")
     public ResponseEntity<JwtAuthenticationResponse> refresh(@RequestBody RefreshTokenRequest refreshTokenRequest) {
         return ResponseEntity.ok(authenticationService.refreshToken(refreshTokenRequest));
@@ -81,4 +84,5 @@ public class AuthenticationController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body("Authentication failed. Please try again.");
     }
+
 }

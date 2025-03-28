@@ -20,6 +20,7 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
 
     // Existing methods
     Optional<User> findByEmail(String email);
+
     Optional<User> findByEmailAndCompany(String email, Company company);
     User findByRole(Role role);
     boolean existsByRole(Role role);
@@ -44,4 +45,10 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
     );
 
     Optional<User> findFirstByRoleAndCompany(Role role, Company company);
+
+    @Query("SELECT COUNT(u) FROM UserInfo u WHERE u.gender = :gender")
+    long countByGender(@Param("gender") String gender);
+    List<User> findByRoleIn(List<Role> roles);
+
+    List<User> findAllByRole(Role role);
 }

@@ -20,6 +20,8 @@ public interface AttendanceService {
     Page<AttendanceDTO> getAllUsersAttendance(String name, LocalDate startDate, LocalDate endDate,String status, int page, int size);
 
     Page<AttendanceDTO> getEmployeeAttendance(Long employeeId, LocalDate startDate, LocalDate endDate, AttendanceStatus attendanceStatus, int page, int size);
+
+    long countByStatusAndDate(AttendanceStatus attendanceStatus, LocalDate today);
 }
 
 

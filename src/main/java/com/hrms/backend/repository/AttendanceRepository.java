@@ -60,6 +60,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("attendanceStatus") AttendanceStatus attendanceStatus,
             Pageable pageable);
 
+    @Query("SELECT COUNT(a) FROM Attendance a WHERE a.status = :status AND a.date = :date")
+    long countByStatusAndDate(@Param("status") AttendanceStatus status, @Param("date") LocalDate date);
 
 }
 

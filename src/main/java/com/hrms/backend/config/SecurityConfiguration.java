@@ -1,7 +1,6 @@
 package com.hrms.backend.config;
 
 import com.hrms.backend.entities.Role;
-import com.hrms.backend.security.CustomOAuth2AuthenticationSuccessHandler;
 import com.hrms.backend.services.impl.UserServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,39 +10,39 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
-    private final CustomOAuth2AuthenticationSuccessHandler customOAuth2AuthenticationSuccessHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserServiceImpl userService;
 
-    public SecurityConfiguration(@Lazy CustomOAuth2AuthenticationSuccessHandler customOAuth2AuthenticationSuccessHandler,@Lazy  JwtAuthenticationFilter jwtAuthenticationFilter,@Lazy  UserServiceImpl userService) {
-        this.customOAuth2AuthenticationSuccessHandler = customOAuth2AuthenticationSuccessHandler;
+    public SecurityConfiguration( @Lazy  JwtAuthenticationFilter jwtAuthenticationFilter, @Lazy  UserServiceImpl userService) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userService = userService;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
 
-        http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS requests
-                       // .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll() // Allow login & refresh token
-                        .requestMatchers("/api/v1/auth/logout").authenticated() // Require authentication for logout
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/oauth2/success").permitAll()
+                        .requestMatchers("/ws").permitAll()
+                        .requestMatchers("/public").permitAll()
+                        .requestMatchers("/api/v1/password/forgot-password").permitAll()
+                        .requestMatchers("/api/v1/password/reset-password").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/v1/manager/**").hasAnyAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/user/details").authenticated()
@@ -56,18 +55,23 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/requests/**").permitAll()
                         .requestMatchers("/api/companies").permitAll()
                         .requestMatchers("/api/v1/salaries/**").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers("/api/announcements/create").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers("/api/notifications/unread").authenticated()
+                        .requestMatchers("/api/notifications/mark-as-read/**").authenticated()
+                        .requestMatchers("/api/consolidated-salaries").hasAuthority(Role.ADMIN.name())
 
                         .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2
+                        .defaultSuccessUrl("/oauth2/success")
+                        .failureUrl("/login?error=true")
+                )
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(customOAuth2AuthenticationSuccessHandler)
-                        .failureUrl("/api/v1/auth/error")
-                );
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
