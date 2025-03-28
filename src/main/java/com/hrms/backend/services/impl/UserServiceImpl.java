@@ -12,6 +12,7 @@ import com.hrms.backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -62,50 +63,23 @@ public class UserServiceImpl implements UserService {
             throw new GenericException("OAuth2 user information is incomplete.", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if the user already exists
         Optional<User> existingUser = userRepository.findByEmail(email);
-        User user;
-
-        if (existingUser.isPresent()) {
-            user = existingUser.get();
-            System.out.println("User already exists: " + email);
-
-            // Handle user status
-            if (user.getStatus() == Status.PENDING) {
-                System.out.println("User is pending approval.");
-            }
-
-            // Check user's role and process accordingly
-            switch (user.getRole()) {
-                case ADMIN -> System.out.println("Processing as ADMIN user...");
-                case MANAGER -> System.out.println("Processing as MANAGER user...");
-                case EMPLOYEE -> System.out.println("Processing as EMPLOYEE user...");
-                default -> {
-                    System.out.println("Unknown role for user. Assigning default role.");
-                    user.setRole(Role.EMPLOYEE);
-                }
-            }
-        } else {
-            // Create a new user with a pending status and default role
-            try {
-                User newUser = new User();
-                newUser.setEmail(email);
-                newUser.setName(name);
-                newUser.setPassword(passwordEncoder.encode("Password123"));
-                newUser.setRole(Role.EMPLOYEE); // Default role
-                newUser.setStatus(Status.PENDING);
-                user = userRepository.save(newUser);
-                System.out.println("New user created: " + email);
-            } catch (Exception e) {
-                throw new GenericException("Error occurred while creating a new user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+        if (existingUser.isEmpty()) {
+            throw new GenericException("Your email is not registered. Please contact your Admin.", HttpStatus.UNAUTHORIZED);
         }
 
-        // Generate and return a JWT token for the user
+        User user = existingUser.get();
+
+        if (user.getStatus() == Status.PENDING) {
+            throw new GenericException("Your account is pending approval.", HttpStatus.FORBIDDEN);
+        }
+
+        // Generate token without first invalidating (since it's a new login)
         try {
             return jwtService.generateToken(user);
         } catch (Exception e) {
-            throw new GenericException("Error occurred while generating JWT token: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new GenericException("Error occurred while generating JWT token: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -236,6 +210,23 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<User> findByUsername(String username) {
         return userRepository.findByEmail(username);
+    }
+
+    @Override
+    public List<User> getAllEmployees() {
+        return userRepository.findByRoleIn(List.of(Role.ADMIN, Role.MANAGER, Role.EMPLOYEE));
+    }
+
+    public void updatePassword(String email, String newPassword) {
+        // Retrieve the user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Encrypt the new password using the password encoder
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // Save the updated user in the database
+        userRepository.save(user);
     }
 
 

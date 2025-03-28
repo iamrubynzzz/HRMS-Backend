@@ -5,9 +5,12 @@ import com.hrms.backend.dto.UserResponseDTO;
 import com.hrms.backend.entities.Attendance;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.UserInfo;
+import com.hrms.backend.exception.GenericException;
+import com.hrms.backend.repository.UserInfoRepository;
 import com.hrms.backend.services.EmployeeService;
 import com.hrms.backend.services.UserService;
 import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
@@ -35,6 +38,7 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final UserService userService;
+    private  final UserInfoRepository userInfoRepository;
     @GetMapping
     public ResponseEntity<String> sayHello(){
         return ResponseEntity.ok("Hi Employee");
@@ -65,12 +69,19 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,  // Default page number
             @RequestParam(defaultValue = "10") int size  // Default page size
     ) {
+        // Debugging output
+        System.out.println("Fetching users with filter - Name: " + name + ", Page: " + page + ", Size: " + size);
+
         // Fetch paginated and filtered users
         Page<UserResponseDTO> usersPage = employeeService.getAllUsers(name, page, size);
+
+        // Debugging output
+        System.out.println("Total Users Retrieved: " + usersPage.getTotalElements());
 
         // Return the response with HTTP 200 OK
         return ResponseEntity.ok(usersPage);
     }
+
 
     // Update an existing employee
     @PutMapping("/{id}")
@@ -85,8 +96,10 @@ public class EmployeeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Integer id) {
         employeeService.deleteUser(id);
-        return ResponseEntity.ok("Employee deleted successfully");
+        return ResponseEntity.ok("Employee deactivated successfully");
     }
+
+
 
     @GetMapping("/details")
     public Integer getUserId() {
@@ -99,5 +112,20 @@ public class EmployeeController {
         }
 
         throw new RuntimeException("User not authenticated");
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getEmployeeStats() {
+        long totalEmployees = employeeService.countTotalEmployees();
+        long totalMale = employeeService.countEmployeesByGender("Male");
+        long totalFemale = employeeService.countEmployeesByGender("Female");
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalEmployees", totalEmployees);
+        stats.put("totalMale", totalMale);
+        stats.put("totalFemale", totalFemale);
+
+        return ResponseEntity.ok(stats);
     }
 }

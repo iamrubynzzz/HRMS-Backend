@@ -3,9 +3,11 @@ package com.hrms.backend.repository;
 import com.hrms.backend.entities.Salary;
 import com.hrms.backend.entities.SalaryStatus;
 import com.hrms.backend.entities.User;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -47,5 +49,33 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
     List<Salary> findSalaries(@Param("employeeName") String employeeName,
                               @Param("startDate") LocalDate startDate,
                               @Param("endDate") LocalDate endDate);
+
+
+    @Query("SELECT s FROM Salary s WHERE " +
+            "s.consolidatedSalary.id = :id AND " +
+            "(:employeeName IS NULL OR LOWER(s.user.name) LIKE LOWER(CONCAT('%', :employeeName, '%'))) AND " +
+            "(:startDate IS NULL OR s.calculationDate >= :startDate) AND " +
+            "(:endDate IS NULL OR s.calculationDate <= :endDate)")
+    Page<Salary> findByConsolidatedSalaryIdWithFilters(
+            @Param("id") Long id,
+            @Param("employeeName") String employeeName,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
+    );
+
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Salary s SET s.status = 'APPROVED' WHERE s.consolidatedSalary.id = :consolidatedSalaryId")
+    int bulkApproveSalaries(@Param("consolidatedSalaryId") Long consolidatedSalaryId);
+
+    // Bulk Release Salaries
+    @Modifying
+    @Transactional
+    @Query("UPDATE Salary s SET s.status = 'RELEASED' WHERE s.consolidatedSalary.id = :consolidatedSalaryId AND s.status = 'APPROVED'")
+    int bulkReleaseSalaries(@Param("consolidatedSalaryId") Long consolidatedSalaryId);
+
+    List<Salary> findByConsolidatedSalaryId(Long consolidatedSalaryId);
 
 }

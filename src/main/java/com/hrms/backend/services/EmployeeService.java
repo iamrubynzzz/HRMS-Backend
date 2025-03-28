@@ -2,6 +2,7 @@ package com.hrms.backend.services;
 
 import com.hrms.backend.dto.UserRequestDTO;
 import com.hrms.backend.dto.UserResponseDTO;
+import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.UserInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,4 +19,7 @@ public interface EmployeeService {
 
     Page<UserResponseDTO> getAllUsers(String name, int page, int size);
     void deleteUser(Integer id);
+    long countTotalEmployees();
+    long countEmployeesByGender(String gender);
+
 }

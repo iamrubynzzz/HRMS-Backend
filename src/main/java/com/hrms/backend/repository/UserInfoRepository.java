@@ -19,6 +19,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
 
     // Custom query to find UserInfo by user ID
     Optional<UserInfo> findByUserId(Integer userId);
+    Optional<UserInfo> findById(Long id);
 
     Optional<Object> findByUser(User user);
 

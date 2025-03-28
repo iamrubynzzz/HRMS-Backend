@@ -27,9 +27,11 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     public CompletableFuture<Boolean> sendEmail(String to, String subject, String content) throws MessagingException {
+        String sanitizedEmail = to.trim();
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+        helper.setTo(sanitizedEmail);
         helper.setTo(to);
         helper.setSubject(subject);
         helper.setText(content, true);
@@ -38,6 +40,7 @@ public class EmailServiceImpl implements EmailService {
             mailSender.send(message);
             return CompletableFuture.completedFuture(true);
         } catch (Exception e) {
+            e.printStackTrace();
             return CompletableFuture.completedFuture(false);
         }
     }
@@ -46,11 +49,10 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void processEmail() {
         List<EmailMessage> emailMessages = emailMessageRepository.findByStatus(EmailStatus.PENDING);
-
+        System.out.println("::: SENDING "+emailMessages.size()+" NO. of Emails ::::");
         emailMessages.forEach(emailMessage -> {
             try {
                 CompletableFuture<Boolean> future = sendEmail(emailMessage.getRecipientAddress(), emailMessage.getSubject(), emailMessage.getMessage());
-
                 future.thenAccept(sent -> {
                     if (sent) {
                         emailMessageRepository.updateEmailStatusById(emailMessage.getId(), EmailStatus.SUCCESS);
@@ -66,3 +68,5 @@ public class EmailServiceImpl implements EmailService {
         });
     }
 }
+
+

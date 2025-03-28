@@ -30,6 +30,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/salaries")
+@CrossOrigin(origins = "http://localhost:3000")
 public class SalaryController {
 
     @Autowired
@@ -67,9 +68,10 @@ public class SalaryController {
         return ResponseEntity.ok(overview);
     }
 
-    // GET API to retrieve salaries for all user
-    @GetMapping("/all")
-    public ResponseEntity<Page<SalaryDTO>> getAllSalaries(
+    // GET API to retrieve salaries for all user based on consolidated salary id
+    @GetMapping("/by-consolidated-salary/{id}")
+    public ResponseEntity<Page<SalaryDTO>> getSalariesByConsolidatedSalaryId(
+            @PathVariable Long id,
             @RequestParam(required = false) String employeeName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
@@ -82,20 +84,7 @@ public class SalaryController {
                 sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending()
                         : Sort.by(sortBy).ascending());
 
-        Page<Salary> salaries = salaryService.getSalaries(employeeName, startDate, endDate, pageable);
-
-        Page<SalaryDTO> salaryDTOs = salaries.map(salary -> new SalaryDTO(
-                salary.getId(),
-                salary.getUser().getName(),
-                salary.getGrossSalary(),
-                salary.getTaxDeduction(),
-                salary.getOvertimePayTotal(),
-                salary.getAllowanceAmountTotal(),
-                salary.getNetSalary(),
-                salary.getCalculationDate(),
-                salary.getStatus()
-        ));
-
+        Page<SalaryDTO> salaryDTOs = salaryService.getSalariesByConsolidatedSalaryId(id, employeeName, startDate, endDate, pageable);
         return ResponseEntity.ok(salaryDTOs);
     }
 
@@ -112,7 +101,29 @@ public class SalaryController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Salary not found.");
     }
 
-    //API to release salary
+    @PutMapping("/approve/by-consolidated-salary/{consolidatedSalaryId}")
+    public ResponseEntity<String> approveSalariesByConsolidatedSalary(@PathVariable Long consolidatedSalaryId) {
+        int updatedCount = salaryService.approveSalariesByConsolidatedSalary(consolidatedSalaryId);
+
+        if (updatedCount > 0) {
+            return ResponseEntity.ok("Successfully approved " + updatedCount + " salaries.");
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No salaries found for the given Consolidated Salary ID.");
+    }
+
+
+    @PutMapping("/release/by-consolidated-salary/{consolidatedSalaryId}")
+    public ResponseEntity<String> releaseSalariesByConsolidatedSalary(@PathVariable Long consolidatedSalaryId) throws MessagingException {
+        int releasedCount = salaryService.releaseSalariesByConsolidatedSalary(consolidatedSalaryId);
+        System.out.println("==============================");
+        if (releasedCount > 0) {
+            return ResponseEntity.ok("Successfully released " + releasedCount + " salaries and sent email notifications.");
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No salaries found for the given Consolidated Salary ID.");
+    }
+
+
+    /*API to release salary
     @PutMapping("/release/{salaryId}")
     public ResponseEntity<String> releaseSalary(@PathVariable Long salaryId) throws MessagingException {
         Salary salary = salaryRepository.findById(salaryId)
@@ -151,7 +162,7 @@ public class SalaryController {
         emailService.sendEmail(recipientEmail, subject, emailContent);
 
         return ResponseEntity.ok("Salary released successfully and email notification sent.");
-    }
+    }*/
 
     // GET API to retrieve salaries for a specific user
     @GetMapping("/user/{userId}")

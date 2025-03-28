@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final UserRepository userRepository;
@@ -48,6 +47,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final HttpSession session;
     private final EmailService emailService;
     private final EmailMessageRepository emailMessageRepository;
+    private final NotificationRepository notificationRepository;
 
     @Override
     public void createUser(UserRequestDTO userRequestDTO, UserInfo userInfo) {
@@ -74,12 +74,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                 throw new GenericException("Super Admin can only create Admins.", HttpStatus.FORBIDDEN);
             }
 
-            if (userRequestDTO.getCompanyId() == null) {
-                throw new GenericException("Company ID must be provided when creating an Admin.", HttpStatus.FORBIDDEN);
+            if (userRequestDTO.getCompanyName() == null || userRequestDTO.getCompanyName().isEmpty()) {
+                throw new GenericException("Company Name must be provided when creating an Admin.", HttpStatus.FORBIDDEN);
             }
 
-            company = companyRepository.findById(Long.valueOf(userRequestDTO.getCompanyId()))
-                    .orElseThrow(() -> new GenericException("Company not found with ID: " + userRequestDTO.getCompanyId(), HttpStatus.NOT_FOUND));
+            company = companyRepository.findByName(userRequestDTO.getCompanyName())
+                    .orElseThrow(() -> new GenericException("Company not found with Name: " + userRequestDTO.getCompanyName(), HttpStatus.NOT_FOUND));
         }
 
         // Admins can only create Managers and Employees for their own company
@@ -150,6 +150,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             if (manager.getRole() != Role.MANAGER) {
                 throw new GenericException("The provided Manager ID does not belong to a valid manager.", HttpStatus.BAD_REQUEST);
+            }
+
+            if (!manager.getCompany().getId().equals(company.getId())) {
+                throw new GenericException("Manager must belong to the same company as the Employee.", HttpStatus.BAD_REQUEST);
             }
 
             managerIdToAssign = userRequestDTO.getManagerId(); // Assign provided manager ID
@@ -362,6 +366,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
 
+    @Transactional
     @Override
     public void deleteUser(Integer id) {
         User user = userRepository.findById(id)
@@ -374,6 +379,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             System.out.println("Deleting salary records for user: " + user.getId());
             salaryRepository.deleteByUser(user);
+
+            notificationRepository.deleteByUserId(user.getId());
 
             System.out.println("Deleting request records for user: " + user.getId());
             requestRepository.deleteByUser(user);
@@ -392,6 +399,18 @@ public class EmployeeServiceImpl implements EmployeeService {
         } catch (Exception ex) {
             throw new DeletionException("Failed to delete user with ID: " + id + ". Reason: " + ex.getMessage());
         }
+    }
+
+    // To show total no. of employees in dashboard
+    @Override
+    public long countTotalEmployees() {
+        return userRepository.count();
+    }
+
+    // To show number of employee based on gender
+    @Override
+    public long countEmployeesByGender(String gender) {
+        return userRepository.countByGender(gender);
     }
 
 

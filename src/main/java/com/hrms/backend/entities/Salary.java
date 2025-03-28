@@ -16,10 +16,13 @@ public class Salary {
     private SalaryStatus status;
 
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @JoinColumn(name = "monthly_report_id", nullable = false)
+    private ConsolidatedSalary consolidatedSalary;
     private double grossSalary;
     private double taxDeduction;
     private float netSalary;
