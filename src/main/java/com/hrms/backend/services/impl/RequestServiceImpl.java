@@ -1,16 +1,15 @@
 package com.hrms.backend.services.impl;
 
+import com.hrms.backend.dto.NotificationMessage;
 import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.*;
 import com.hrms.backend.exception.AccessDeniedException;
 import com.hrms.backend.exception.GenericException;
-import com.hrms.backend.repository.AttendanceRepository;
-import com.hrms.backend.repository.RequestRepository;
-import com.hrms.backend.repository.UserInfoRepository;
-import com.hrms.backend.repository.UserRepository;
+import com.hrms.backend.repository.*;
 import com.hrms.backend.services.NotificationService;
 import com.hrms.backend.services.RequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -23,15 +22,21 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
 
 @Service
 @RequiredArgsConstructor
+
 public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final UserInfoRepository userInfoRepository;
     private final AttendanceRepository attendanceRepository;
     private final NotificationService notificationService;
+    @Autowired
+    private NotificationRepository notificationRepository;
     @Override
     public RequestDTO createRequest(RequestDTO requestDTO) {
         // Validate the request
@@ -87,18 +92,13 @@ public class RequestServiceImpl implements RequestService {
         // Save the request
         Request savedRequest = requestRepository.save(request);
 
-        // Send notification to all Admins
-        List<User> admins = userRepository.findAllByRole(Role.ADMIN);
-        for (User admin : admins) {
-            notificationService.sendNotification(
-                    admin,
-                    "New request created by " + user.getUsername(),
-                    NotificationType.REQUEST
-            );
-        }
+        // Create and save a notification
+        String message = "Your " + requestDTO.getRequestType().replace("_", " ").toLowerCase() + " request has been created and is pending approval.";
+        Notification notification = new Notification(user, message, NotificationType.REQUEST,"ADMIN|MANAGER|USER", Status.PENDING);
+        notificationRepository.save(notification);
 
-        // Convert and return the saved request as DTO
         return new RequestDTO(savedRequest);
+
     }
 
 
@@ -383,6 +383,11 @@ public class RequestServiceImpl implements RequestService {
         // Save the updated request
         requestRepository.save(request);
 
+        // Create and save a notification
+        String message = "Your " + request.getRequestType().name().replace("_", " ").toLowerCase() + " request has been approved.";
+        Notification notification = new Notification(request.getUser(), message, NotificationType.REQUEST,"USER", Status.APPROVED);
+        notificationRepository.save(notification);
+
         return mapToDTO(request);
     }
 
@@ -403,6 +408,11 @@ public class RequestServiceImpl implements RequestService {
 
             // Save the updated request
             requestRepository.save(request);
+
+            // Create and save a notification
+            String message = "Your " + request.getRequestType().name().replace("_", " ").toLowerCase() + " request has been rejected.";
+            Notification notification = new Notification(request.getUser(), message, NotificationType.REQUEST, "USER", Status.REJECTED);
+            notificationRepository.save(notification);
 
             return mapToDTO(request);
         }

@@ -16,6 +16,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
+import java.util.List;
 
 
 @Configuration
@@ -32,15 +37,16 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(request -> request
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/oauth2/success").permitAll()
-                        .requestMatchers("/ws").permitAll()
+                      //  .requestMatchers("/ws").permitAll()
                         .requestMatchers("/public").permitAll()
                         .requestMatchers("/api/v1/password/forgot-password").permitAll()
                         .requestMatchers("/api/v1/password/reset-password").permitAll()
+                        .requestMatchers("/api/v1/password/change-password").authenticated()
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/api/v1/auth/logout").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
@@ -52,6 +58,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/leave/approve/**").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())
                         .requestMatchers("/api/leave/all").hasAnyAuthority(Role.ADMIN.name(), Role.MANAGER.name())
                         .requestMatchers("/api/leave/**").authenticated()
+                        .requestMatchers("/api/requests/profile").authenticated()
                         .requestMatchers("/api/requests/**").permitAll()
                         .requestMatchers("/api/companies").permitAll()
                         .requestMatchers("/api/v1/salaries/**").hasAuthority(Role.ADMIN.name())
@@ -67,7 +74,8 @@ public class SecurityConfiguration {
                 )
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .csrf(csrf -> csrf.disable());
 
         return http.build();
     }
@@ -89,5 +97,33 @@ public class SecurityConfiguration {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public CorsFilter corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(List.of("http://localhost:3000")); // Frontend URL
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+
+        source.registerCorsConfiguration("/**", config);
+        return new CorsFilter(source);
+    }
+
+    @Bean
+    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(List.of("http://localhost:3000")); // Frontend URL
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

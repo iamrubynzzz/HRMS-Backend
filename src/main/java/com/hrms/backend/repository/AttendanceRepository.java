@@ -49,19 +49,45 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             Pageable pageable);
 
     //All attendance list for employee view where employee can see their own attendance only
-    @Query("SELECT a FROM Attendance a WHERE a.user.id = :employeeId " +
+    @Query("SELECT a FROM Attendance a " +
+            "JOIN a.user e " +  // Assuming attendance is related to an employee
+            "WHERE e.id = :employeeId " +
             "AND (:startDate IS NULL OR a.date >= :startDate) " +
             "AND (:endDate IS NULL OR a.date <= :endDate) " +
-            "AND (:attendanceStatus IS NULL OR a.status = :attendanceStatus)")
+            "AND (:attendanceStatus IS NULL OR a.status = :attendanceStatus) " +
+            "AND (:name IS NULL OR e.name LIKE %:name%)")  // Filtering by employee name
     Page<Attendance> findByEmployeeIdAndFilters(
             @Param("employeeId") Long employeeId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("attendanceStatus") AttendanceStatus attendanceStatus,
+            @Param("name") String name,
             Pageable pageable);
 
     @Query("SELECT COUNT(a) FROM Attendance a WHERE a.status = :status AND a.date = :date")
     long countByStatusAndDate(@Param("status") AttendanceStatus status, @Param("date") LocalDate date);
 
+    @Query("SELECT a FROM Attendance a WHERE a.user.id IN :employeeIds " +
+            "AND (:startDate IS NULL OR a.date >= :startDate) " +
+            "AND (:endDate IS NULL OR a.date <= :endDate) " +
+            "AND (:status IS NULL OR a.status = :status)")
+    Page<Attendance> findByEmployeeIdsAndFilters(@Param("employeeIds") List<Integer> employeeIds,
+                                                 @Param("startDate") LocalDate startDate,
+                                                 @Param("endDate") LocalDate endDate,
+                                                 @Param("status") AttendanceStatus status,
+                                                 Pageable pageable);
+
+    @Query("SELECT a FROM Attendance a WHERE a.user.id IN :employeeIds " +
+            "AND (:startDate IS NULL OR a.date >= :startDate) " +
+            "AND (:endDate IS NULL OR a.date <= :endDate) " +
+            "AND (:status IS NULL OR a.status = :status) " +
+            "AND (:name IS NULL OR a.user.name LIKE %:name%)")
+    Page<Attendance> findByEmployeeIdsAndFiltersAndName(
+            @Param("employeeIds") List<Integer> employeeIds,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") AttendanceStatus status,
+            @Param("name") String name,
+            Pageable pageable);
 }
 

@@ -1,9 +1,11 @@
 package com.hrms.backend;
 
+import com.hrms.backend.config.SocketServer;
 import com.hrms.backend.entities.Role;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.exception.GenericException;
+import com.hrms.backend.repository.NotificationRepository;
 import com.hrms.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.net.InetSocketAddress;
+
 @EnableAsync
 @SpringBootApplication(scanBasePackages = "com.hrms.backend")
 @EnableScheduling
@@ -26,6 +30,9 @@ public class HrmsApplication implements CommandLineRunner {
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Value("${admin.email}")
     private String adminEmail;
@@ -55,6 +62,8 @@ public class HrmsApplication implements CommandLineRunner {
             } else {
                 System.out.println("Super Admin user already exists.");
             }
+            SocketServer server = new SocketServer(new InetSocketAddress("0.0.0.0",8091), notificationRepository);
+            server.start();
         } catch (Exception e) {
             throw new GenericException("Error creating Super admin user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }

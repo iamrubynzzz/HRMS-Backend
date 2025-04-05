@@ -1,16 +1,24 @@
 package com.hrms.backend.services.impl;
 
+import com.hrms.backend.dto.ChangePasswordRequest;
 import com.hrms.backend.entities.EmailMessage;
 import com.hrms.backend.entities.EmailStatus;
 import com.hrms.backend.entities.PasswordResetToken;
 import com.hrms.backend.entities.User;
+import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.EmailMessageRepository;
 import com.hrms.backend.repository.PasswordResetTokenRepository;
+import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.EmailService;
 import com.hrms.backend.services.PasswordResetService;
 import com.hrms.backend.services.UserService;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,6 +39,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
     @Autowired
     private EmailMessageRepository emailMessageRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     private static final int EXPIRY_TIME_IN_MINUTES = 40;
 
     public void createPasswordResetTokenForUser(String email) {
@@ -122,6 +136,35 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         // Delete the token after use
         tokenRepository.delete(resetToken);
+
+        return true;
+    }
+
+    // Existing method to fetch authenticated user
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (User) authentication.getPrincipal();
+    }
+
+    // Change Password Method
+    @Transactional
+    public boolean changePassword(ChangePasswordRequest request) {
+        // Fetch the currently authenticated user
+        User user = getAuthenticatedUser();
+
+        // Validate Old Password
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new GenericException("Old password is incorrect", HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate if New Password and Confirm Password match
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new GenericException("New password and confirm password do not match", HttpStatus.BAD_REQUEST);
+        }
+
+        // Encrypt and save the new password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
 
         return true;
     }

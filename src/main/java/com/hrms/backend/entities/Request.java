@@ -49,4 +49,5 @@ public class Request {
     private int overtimeHours;
     private int approvedBy;
     private int rejectedBy;
+
 }

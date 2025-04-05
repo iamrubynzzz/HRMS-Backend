@@ -95,11 +95,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean shouldSkipFilter(String requestURI) {
-        return requestURI.startsWith("/api/v1/forgot-password") ||
-                requestURI.startsWith("/api/v1/reset-password") ||
-                requestURI.startsWith("/api/v1/attendance/attendance");
-    }
+
 
     //  New method to check if token is revoked
     private boolean isTokenRevoked(String jwt) {
