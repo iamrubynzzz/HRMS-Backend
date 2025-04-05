@@ -2,12 +2,11 @@ package com.hrms.backend.dto;
 
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class NotificationMessage {
-    private String to;        // Username of the recipient (for private messages)
-    private String message;   // Notification content
-    private String type;      // Type of notification (REQUEST, LEAVE, etc.)
+    private String message;
+    private String recipientRole; // Admin, SuperAdmin, etc.
+    private Long companyId; // To ensure the right admin receives the notification
 }

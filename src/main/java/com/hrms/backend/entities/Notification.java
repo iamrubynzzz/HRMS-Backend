@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.awt.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,13 +31,22 @@ public class Notification {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    private boolean isRead = false;  // Default: Unread
+    private String notificationGroup;
 
-    public Notification(User user, String message, NotificationType type) {
+    @Enumerated(EnumType.STRING)
+    private Status status ;
+
+    public Notification(User user, String message, NotificationType type, String notificationGroup, Status status) {
         this.user = user;
         this.message = message;
         this.type = type;
+        this.notificationGroup = notificationGroup;
+        this.status = status;
         this.createdAt = LocalDateTime.now();
-        this.isRead = false;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 }

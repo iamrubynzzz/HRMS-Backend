@@ -1,10 +1,7 @@
 package com.hrms.backend.controller;
 
 import com.hrms.backend.dto.RequestDTO;
-import com.hrms.backend.entities.Request;
-import com.hrms.backend.entities.Role;
-import com.hrms.backend.entities.Status;
-import com.hrms.backend.entities.User;
+import com.hrms.backend.entities.*;
 import com.hrms.backend.exception.AccessDeniedException;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.JWTService;
@@ -19,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -29,7 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -99,6 +99,47 @@ public class RequestController {
 
         Page<RequestDTO> myRequests = requestService.getAllRequestsForLoggedInUser(user, status, date, pageable);
         return ResponseEntity.ok(myRequests);
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<Map<String, Object>> getUserProfile(@AuthenticationPrincipal User user) {
+        Map<String, Object> response = new HashMap<>();
+
+        // User details
+        response.put("fullName", user.getName());
+        response.put("initials", getUserInitials(user.getName()));
+        response.put("email", user.getEmail());
+
+        // Fetch UserInfo if available
+        UserInfo userInfo = user.getUserInfo();
+        if (userInfo != null) {
+            response.put("address", userInfo.getAddress());
+            response.put("contact", userInfo.getContact());
+            response.put("dateOfBirth", userInfo.getDateOfBirth());
+            response.put("gender", userInfo.getGender());
+            response.put("hireDate", userInfo.getHireDate());
+            response.put("userId", user.getId());
+        } else {
+            response.put("address", null);
+            response.put("contact", null);
+            response.put("dateOfBirth", null);
+            response.put("gender", null);
+            response.put("hireDate", null);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    public String getUserInitials(String fullName) {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            return "?";
+        }
+
+        String[] names = fullName.trim().split("\\s+");
+        if (names.length == 1) {
+            return names[0].substring(0, 1).toUpperCase();
+        }
+        return (names[0].substring(0, 1) + names[names.length - 1].substring(0, 1)).toUpperCase();
     }
 
     @PutMapping("/approve/{requestId}")

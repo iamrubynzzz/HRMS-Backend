@@ -101,19 +101,36 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
-    public Page<AttendanceDTO> getEmployeeAttendance(Long employeeId, LocalDate startDate, LocalDate endDate, AttendanceStatus attendanceStatus, int page, int size) {
+    public Page<AttendanceDTO> getEmployeeAttendance(Long employeeId, LocalDate startDate, LocalDate endDate, AttendanceStatus attendanceStatus, String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Call the repository with filters
-        Page<Attendance> attendancePage = attendanceRepository.findByEmployeeIdAndFilters(employeeId, startDate, endDate, attendanceStatus, pageable);
+        // Call the repository with filters, including name
+        Page<Attendance> attendancePage = attendanceRepository.findByEmployeeIdAndFilters(
+                employeeId, startDate, endDate, attendanceStatus, name, pageable);
 
         return attendancePage.map(this::convertToDTO);
     }
 
+    @Override
+    public Page<AttendanceDTO> getEmployeesAttendance(List<Integer> employeeIds, LocalDate startDate, LocalDate endDate, AttendanceStatus status, String name, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Attendance> attendancePage;
+
+        if (name != null && !name.isEmpty()) {
+            // If name is provided, filter by name along with other criteria
+            attendancePage = attendanceRepository.findByEmployeeIdsAndFiltersAndName(employeeIds, startDate, endDate, status, name, pageable);
+        } else {
+            // No name filter, fetch based on other filters
+            attendancePage = attendanceRepository.findByEmployeeIdsAndFilters(employeeIds, startDate, endDate, status, pageable);
+        }
+
+        return attendancePage.map(this::convertToDTO);
+    }
+
+
     public long countByStatusAndDate(AttendanceStatus status, LocalDate date) {
         return attendanceRepository.countByStatusAndDate(status, date);
     }
-
 
 
     private AttendanceStatus determineStatus(LocalDate date) {

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
-    @Autowired
+    /*@Autowired
     private NotificationRepository notificationRepository;
 
     @Autowired
@@ -29,5 +29,5 @@ public class NotificationServiceImpl implements NotificationService {
         // WebSocket notification (for real-time updates)
         messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", message);
 
-    }
+    }*/
 }

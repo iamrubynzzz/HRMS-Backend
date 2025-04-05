@@ -8,12 +8,14 @@ import com.hrms.backend.entities.AttendanceStatus;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.AttendanceRepository;
+import com.hrms.backend.repository.EmployeeManagerRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.AttendanceService;
 import com.hrms.backend.services.RequestService;
 import com.hrms.backend.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -36,6 +38,7 @@ public class AttendanceController {
     private final UserRepository userRepository;
     private  final UserService userService;
     private final AttendanceRepository attendanceRepository;
+    private final EmployeeManagerRepository employeeManagerRepository;
     @PostMapping("/{rfid}")
     public ResponseEntity<?> clockInOut(@PathVariable String rfid) {
         try {
@@ -121,31 +124,48 @@ public class AttendanceController {
 
 
 // API for employee attendance
-    @GetMapping("/my-attendance")
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<Page<AttendanceDTO>> getEmployeeAttendance(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            Principal principal) {  // Fetches logged-in employee details
+@GetMapping("/manager-attendance")
+@PreAuthorize("hasRole('MANAGER')")
+public ResponseEntity<Page<AttendanceDTO>> getManagerAndEmployeesAttendance(
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String name,  // Added 'name' filter parameter
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        Principal principal) {
 
-        Optional<User> userOptional = userService.findByUsername(principal.getName());
-
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null); // Handle case where user is not found
-        }
-
-        Long employeeId = Long.valueOf(userOptional.get().getId());  // Get the logged-in employee ID
-        AttendanceStatus attendanceStatus = (status != null) ? AttendanceStatus.valueOf(status) : null; // Convert status
-
-        Page<AttendanceDTO> attendancePage = attendanceService.getEmployeeAttendance(employeeId, startDate, endDate, attendanceStatus, page, size);
-        return ResponseEntity.ok(attendancePage);
+    // Get Manager's details
+    Optional<User> managerOptional = userService.findByUsername(principal.getName());
+    if (managerOptional.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
     }
 
+    User manager = managerOptional.get();
+    AttendanceStatus attendanceStatus = (status != null) ? AttendanceStatus.valueOf(status) : null;
 
-// To show attendance in pie-chart
+    // Fetch manager's own attendance
+    Page<AttendanceDTO> managerAttendance = attendanceService.getEmployeeAttendance(Long.valueOf(manager.getId()), startDate, endDate, attendanceStatus, name, page, size);
+
+    // Fetch assigned employees' attendance
+    List<Integer> managedEmployeeIds = employeeManagerRepository.findEmployeeIdsByManagerId(manager.getId());
+    Page<AttendanceDTO> employeesAttendance = attendanceService.getEmployeesAttendance(managedEmployeeIds, startDate, endDate, attendanceStatus, name, page, size);
+
+    // Combine both pages into one
+    List<AttendanceDTO> combinedContent = new ArrayList<>();
+    combinedContent.addAll(managerAttendance.getContent());
+    combinedContent.addAll(employeesAttendance.getContent());
+
+    // Create a new Page with combined content
+    Page<AttendanceDTO> combinedPage = new PageImpl<>(combinedContent,
+            PageRequest.of(page, size),
+            managerAttendance.getTotalElements() + employeesAttendance.getTotalElements());
+
+    return ResponseEntity.ok(combinedPage);
+}
+
+
+    // To show attendance in pie-chart
     @GetMapping("/stats/today")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Long>> getAttendanceStatsForToday() {

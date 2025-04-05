@@ -9,11 +9,11 @@ import com.hrms.backend.entities.Request;
 @Component
 public class RequestListener {
 
-    @Autowired
+   /* @Autowired
     private SimpMessagingTemplate template;
 
     @JmsListener(destination = "request.queue")
     public void receiveMessage(Request request) {
         template.convertAndSend("/topic/requests", request);
-    }
+    }*/
 }

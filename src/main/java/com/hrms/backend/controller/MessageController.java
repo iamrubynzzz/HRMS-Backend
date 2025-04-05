@@ -13,20 +13,9 @@ import com.hrms.backend.entities.Request;
 @Controller
 public class MessageController {
 
-    @Autowired
-    private SimpMessagingTemplate simpMessagingTemplate;
-
-    // Public notifications (e.g., to all Admins)
-    @MessageMapping("/application")
-    @SendTo("all/messages")
-    public void sendPublicNotification(@Payload NotificationMessage message) {
-        System.out.println("------->>>>"+message);
-        simpMessagingTemplate.convertAndSend("/topic/notifications", message);
-    }
-
-    // Private notifications (e.g., to a specific Admin)
-    @MessageMapping("/private")
-    public void sendToSpecificUser(@Payload NotificationMessage message) {
-        simpMessagingTemplate.convertAndSendToUser(message.getTo(), "/queue/notifications", message);
-    }
+   /* @MessageMapping("/notify")
+    @SendTo("/topic/notifications")
+    public NotificationMessage sendNotification(NotificationMessage notification) {
+        return notification; // Broadcast to all subscribed clients
+    }*/
 }
