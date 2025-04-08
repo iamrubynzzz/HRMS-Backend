@@ -12,4 +12,7 @@ import java.util.List;
 public class ManagerLeaveBalanceResponse {
     private LeaveBalanceDTO managerLeaveBalance;
     private List<LeaveBalanceDTO> employeeLeaveBalances;
+    private int totalPages;
+    private long totalElements;
+
 }

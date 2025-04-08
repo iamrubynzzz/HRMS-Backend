@@ -89,5 +89,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("status") AttendanceStatus status,
             @Param("name") String name,
             Pageable pageable);
+
+
+    // Custom query to get attendance by employeeId and date range
+    @Query("SELECT a FROM Attendance a WHERE a.user.name = :name AND a.date BETWEEN :startDate AND :endDate")
+    List<Attendance> findAttendanceByEmployeeAndDateRange(String name, LocalDate startDate, LocalDate endDate);
 }
 

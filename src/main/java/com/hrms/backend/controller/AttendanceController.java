@@ -115,8 +115,8 @@ public class AttendanceController {
                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                 @RequestParam(required = false) String status,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
+                @RequestParam(defaultValue = "0") int page,
+                @RequestParam(defaultValue = "10") int size) {
 
             Page<AttendanceDTO> attendancePage = attendanceService.getAllUsersAttendance(name, startDate, endDate, status, page, size);
             return ResponseEntity.ok(attendancePage);
@@ -168,9 +168,11 @@ public ResponseEntity<Page<AttendanceDTO>> getManagerAndEmployeesAttendance(
     @GetMapping("/my-attendance")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<Page<AttendanceDTO>> getEmployeeOwnAttendance(
+
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Principal principal) {
@@ -190,7 +192,7 @@ public ResponseEntity<Page<AttendanceDTO>> getManagerAndEmployeesAttendance(
                 startDate,
                 endDate,
                 attendanceStatus,
-                null, // name filter not needed here
+                name, // name filter not needed here
                 page,
                 size
         );

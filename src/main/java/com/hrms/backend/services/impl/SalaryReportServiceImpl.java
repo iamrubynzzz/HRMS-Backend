@@ -62,6 +62,9 @@ public class SalaryReportServiceImpl implements SalaryReportService {
             table.addCell("Employee Name");
             table.addCell(salary.getUser().getName());
 
+            table.addCell("Calculation Date");
+            table.addCell(salary.getCalculationDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+
             table.addCell("Gross Salary");
             table.addCell(String.valueOf(salary.getGrossSalary()));
 
@@ -76,9 +79,6 @@ public class SalaryReportServiceImpl implements SalaryReportService {
 
             table.addCell("Net Salary");
             table.addCell(String.valueOf(salary.getNetSalary()));
-
-            table.addCell("Calculation Date");
-            table.addCell(salary.getCalculationDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
 
             document.add(table);
             document.close();
