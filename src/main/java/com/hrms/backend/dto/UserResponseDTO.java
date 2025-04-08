@@ -44,5 +44,6 @@ public class UserResponseDTO {
             this.sickLeaveBalance = userInfo.getSickLeaveBalance();
         }
     }
+
 }
 

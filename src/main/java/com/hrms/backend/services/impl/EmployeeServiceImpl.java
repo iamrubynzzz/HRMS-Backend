@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -424,4 +425,43 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         return sb.toString();
     }
+
+
+    @Override
+    public Page<UserResponseDTO> getAssignedEmployeesByManager(Integer id, String name, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+
+        List<Integer> assignedEmployeeIds = employeeManagerRepository.findEmployeeIdsByManagerId(id);
+
+        if (assignedEmployeeIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Page<User> employees;
+
+        if (name != null && !name.isBlank()) {
+            employees = userRepository.findByIdInAndNameContainingIgnoreCase(
+                    assignedEmployeeIds, name, pageable
+            );
+        } else {
+            employees = userRepository.findByIdIn(assignedEmployeeIds, pageable);
+        }
+
+        return employees.map(user -> {
+            UserInfo userInfo = user.getUserInfo(); // fetch details for the employee
+
+            // Get the EmployeeManager mapping for this employee
+            Optional<EmployeeManager> mapping = employeeManagerRepository.findByEmployeeId(user.getId());
+
+            String managerName = "No Manager";
+            if (mapping.isPresent()) {
+                Integer managerId = mapping.get().getManagerId();
+                Optional<User> managerUser = userRepository.findById(managerId);
+                managerName = managerUser.map(User::getName).orElse("No Manager");
+            }
+
+            return new UserResponseDTO(user, userInfo, managerName);
+        });
+    }
+
 }

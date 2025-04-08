@@ -3,6 +3,8 @@ package com.hrms.backend.repository;
 import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.UserInfo;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -26,6 +28,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
 
     boolean existsByUserId(Integer userId);
 
-    List<UserInfo> findByUserIdIn(List<Integer> employeeIds);
+    Page<UserInfo> findByUserIdIn(List<Integer> userIds, Pageable pageable);
+
 }
 

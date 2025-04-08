@@ -13,6 +13,7 @@ import com.hrms.backend.services.UserService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -135,7 +136,7 @@ public class SalaryController {
     }
 
     //API to generate salary report
-    @GetMapping("/{salaryId}/report")
+    @GetMapping("generate/{salaryId}/report")
     public ResponseEntity<String> downloadSalaryReport(@PathVariable Long salaryId) {
         String filePath = salaryReportService.generateSalaryReportById(salaryId);
 

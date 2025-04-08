@@ -90,6 +90,32 @@ public class EmployeeController {
     }
 
 
+    // Api for the manager view so that they can see the list of employees that are assigned to them
+    @GetMapping("/assigned-employees")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Page<UserResponseDTO>> getAssignedEmployeesByManager(
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal
+    ) {
+        // Fetch manager info from Principal
+        Optional<User> managerOptional = userService.findByUsername(principal.getName());
+        if (managerOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        User manager = managerOptional.get();
+
+        Page<UserResponseDTO> assignedEmployeesPage = employeeService.getAssignedEmployeesByManager(
+                manager.getId(), name, page, size
+        );
+
+        return ResponseEntity.ok(assignedEmployeesPage);
+    }
+
+
+
     // Update an existing employee
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -166,7 +192,11 @@ public class EmployeeController {
     // To show the leave balance of manager as well as their assigned employee
     @GetMapping("/manager/leave-balances")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ManagerLeaveBalanceResponse> getManagerAndEmployeesLeaveBalances(Principal principal) {
+    public ResponseEntity<ManagerLeaveBalanceResponse> getManagerAndEmployeesLeaveBalances(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) {
+
         // 1. Get manager details
         Optional<User> managerOptional = userService.findByUsername(principal.getName());
         if (managerOptional.isEmpty()) {
@@ -188,16 +218,24 @@ public class EmployeeController {
                 managerInfo.getSickLeaveBalance()
         );
 
-        // 3. Get assigned employees' leave balances
+        // 3. Get assigned employees' leave balances with pagination
         List<Integer> employeeIds = employeeManagerRepository.findEmployeeIdsByManagerId(manager.getId());
-        List<UserInfo> employeeInfos = userInfoRepository.findByUserIdIn(employeeIds);
 
-        List<LeaveBalanceDTO> employeeLeaveBalances = employeeInfos.stream()
+        // Use Pageable to fetch employee leave balances
+        Pageable pageable = PageRequest.of(page, size);
+        Page<UserInfo> employeeInfosPage = userInfoRepository.findByUserIdIn(employeeIds, pageable);
+
+        List<LeaveBalanceDTO> employeeLeaveBalances = employeeInfosPage.getContent().stream()
                 .map(info -> new LeaveBalanceDTO(info.getUser().getName(), info.getAnnualLeaveBalance(), info.getSickLeaveBalance()))
                 .collect(Collectors.toList());
 
-        // 4. Prepare response
-        ManagerLeaveBalanceResponse response = new ManagerLeaveBalanceResponse(managerLeaveBalance, employeeLeaveBalances);
+        // 4. Prepare response including pagination details
+        ManagerLeaveBalanceResponse response = new ManagerLeaveBalanceResponse(
+                managerLeaveBalance,
+                employeeLeaveBalances,
+                employeeInfosPage.getTotalPages(),
+                employeeInfosPage.getTotalElements()
+        );
 
         return ResponseEntity.ok(response);
     }

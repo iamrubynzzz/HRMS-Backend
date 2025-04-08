@@ -55,4 +55,9 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
     @Query("SELECT COUNT(u) FROM User u WHERE u.role <> 'SUPER_ADMIN'")
     long countEmployeesExcludingSuperAdmin();
 
+    Page<User> findByIdIn(List<Integer> ids, Pageable pageable);
+
+    Page<User> findByIdInAndNameContainingIgnoreCase(List<Integer> ids, String name, Pageable pageable);
+
+
 }

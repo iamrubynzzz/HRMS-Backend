@@ -311,7 +311,6 @@ public class SalaryServiceImpl implements SalaryService {
 
     // Fetch payroll for multiple users (employees under a manager)
     // Method to get payroll for multiple users (employees under a manager)
-    // Method to get payroll for multiple users (employees under a manager)
     public Page<SalaryDTO> getMonthlyPayrollForMultipleUsers(List<Long> userIds, LocalDate startDate, LocalDate endDate, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("calculationDate").descending());
         return salaryRepository.findByUserIdInAndCalculationDateBetween(userIds, startDate, endDate, pageable)

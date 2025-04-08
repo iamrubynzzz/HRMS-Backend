@@ -14,7 +14,7 @@ public interface EmployeeManagerRepository extends JpaRepository<EmployeeManager
     Optional<EmployeeManager> findByEmployeeId(Integer employeeId);
     boolean existsByEmployeeId(Integer employeeId);
 
-    @Query("SELECT em.employeeId FROM EmployeeManager em WHERE em.managerId = :managerId")
+    @Query(value = "SELECT employee_id FROM employee_manager WHERE manager_id = :managerId", nativeQuery = true)
     List<Integer> findEmployeeIdsByManagerId(@Param("managerId") Integer managerId);
 
 
