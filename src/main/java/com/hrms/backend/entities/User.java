@@ -81,5 +81,6 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return this.status == Status.APPROVED;
     }
+
 }
 

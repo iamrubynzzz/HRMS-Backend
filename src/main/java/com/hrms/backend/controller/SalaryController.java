@@ -4,29 +4,29 @@ import com.hrms.backend.dto.SalaryDTO;
 import com.hrms.backend.entities.*;
 import com.hrms.backend.exception.ResourceNotFoundException;
 import com.hrms.backend.repository.EmailMessageRepository;
+import com.hrms.backend.repository.EmployeeManagerRepository;
 import com.hrms.backend.repository.SalaryRepository;
 import com.hrms.backend.services.EmailService;
 import com.hrms.backend.services.SalaryReportService;
 import com.hrms.backend.services.SalaryService;
+import com.hrms.backend.services.UserService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/salaries")
@@ -39,13 +39,17 @@ public class SalaryController {
     @Autowired
     private SalaryService salaryService;
     private final EmailService emailService;
+    private  final UserService userService;
     private final EmailMessageRepository emailMessageRepository;
+    private final EmployeeManagerRepository employeeManagerRepository;
 
     @Autowired
     private SalaryReportService salaryReportService;
-    public SalaryController(EmailService emailService, EmailMessageRepository emailMessageRepository) {
+    public SalaryController(EmailService emailService, UserService userService, EmailMessageRepository emailMessageRepository, EmployeeManagerRepository employeeManagerRepository) {
         this.emailService = emailService;
+        this.userService = userService;
         this.emailMessageRepository = emailMessageRepository;
+        this.employeeManagerRepository = employeeManagerRepository;
     }
 
     @PostMapping("/calculate")
@@ -140,4 +144,80 @@ public class SalaryController {
                 .contentType(MediaType.TEXT_PLAIN)
                 .body("Salary report saved to: " + filePath);
     }
+
+    // For the employee view of payroll
+    // Get monthly payroll for the logged-in employee with pagination and filtering options
+    @GetMapping("/my-salary")
+    public ResponseEntity<Page<SalaryDTO>> getMySalary(
+            Principal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "calculationDate,desc") String sort,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        String username = principal.getName();
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Parse the sort parameter
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = Sort.Direction.fromString(sortParams[1]);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        // Fetch the monthly salary with pagination and date filters
+        Page<SalaryDTO> mySalary = salaryService.getMonthlyPayroll(user, startDate, endDate, pageable);
+        return ResponseEntity.ok(mySalary);
+    }
+
+    // For the manager view of payroll to see their own as well as assigned employees salary
+    @GetMapping("/manager-payroll")
+    @PreAuthorize("hasAuthority('MANAGER')")
+    public ResponseEntity<Page<SalaryDTO>> getManagerAndEmployeesPayroll(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) {
+
+        System.out.println("================ Controller reached");
+
+        Optional<User> managerOptional = userService.findByUsername(principal.getName());
+        if (managerOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        User manager = managerOptional.get();
+
+        // Handle default date range
+        if (startDate == null) {
+            startDate = LocalDate.of(2000, 1, 1);
+        }
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+
+        // Manager's payroll
+        Page<SalaryDTO> managerPayroll = salaryService.getMonthlyPayrollForUser(manager, startDate, endDate, page, size);
+
+        // Employee IDs under manager
+        List<Integer> managedEmployeeIds = employeeManagerRepository.findEmployeeIdsByManagerId(manager.getId());
+        List<Long> managedEmployeeLongIds = managedEmployeeIds.stream().map(Integer::longValue).collect(Collectors.toList());
+
+        // Employees' payroll
+        Page<SalaryDTO> employeesPayroll = salaryService.getMonthlyPayrollForMultipleUsers(
+                managedEmployeeLongIds, startDate, endDate, page, size);
+
+        // Combine
+        List<SalaryDTO> combinedContent = new ArrayList<>();
+        combinedContent.addAll(managerPayroll.getContent());
+        combinedContent.addAll(employeesPayroll.getContent());
+
+        Page<SalaryDTO> combinedPage = new PageImpl<>(combinedContent,
+                PageRequest.of(page, size),
+                managerPayroll.getTotalElements() + employeesPayroll.getTotalElements());
+
+        return ResponseEntity.ok(combinedPage);
+    }
+
 }

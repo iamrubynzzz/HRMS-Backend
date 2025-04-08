@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,5 +25,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Integer> {
     Optional<Object> findByUser(User user);
 
     boolean existsByUserId(Integer userId);
+
+    List<UserInfo> findByUserIdIn(List<Integer> employeeIds);
 }
 

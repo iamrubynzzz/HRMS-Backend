@@ -404,8 +404,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     // To show total no. of employees in dashboard
     @Override
     public long countTotalEmployees() {
-        return userRepository.count();
+        return userRepository.countEmployeesExcludingSuperAdmin();
     }
+
 
     // To show number of employee based on gender
     @Override

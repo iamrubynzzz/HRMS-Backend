@@ -123,7 +123,7 @@ public class AttendanceController {
         }
 
 
-// API for employee attendance
+// API for manager view of  attendance
 @GetMapping("/manager-attendance")
 @PreAuthorize("hasRole('MANAGER')")
 public ResponseEntity<Page<AttendanceDTO>> getManagerAndEmployeesAttendance(
@@ -163,6 +163,41 @@ public ResponseEntity<Page<AttendanceDTO>> getManagerAndEmployeesAttendance(
 
     return ResponseEntity.ok(combinedPage);
 }
+
+    // API for employee to view their own attendance
+    @GetMapping("/my-attendance")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<Page<AttendanceDTO>> getEmployeeOwnAttendance(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) {
+
+        // Get employee by username
+        Optional<User> userOptional = userService.findByUsername(principal.getName());
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        User employee = userOptional.get();
+        AttendanceStatus attendanceStatus = (status != null) ? AttendanceStatus.valueOf(status) : null;
+
+        // Fetch only the logged-in employee's attendance
+        Page<AttendanceDTO> attendancePage = attendanceService.getEmployeeAttendance(
+                Long.valueOf(employee.getId()),
+                startDate,
+                endDate,
+                attendanceStatus,
+                null, // name filter not needed here
+                page,
+                size
+        );
+
+        return ResponseEntity.ok(attendancePage);
+    }
+
 
 
     // To show attendance in pie-chart

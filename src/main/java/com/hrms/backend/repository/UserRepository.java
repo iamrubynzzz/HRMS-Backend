@@ -51,4 +51,8 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
     List<User> findByRoleIn(List<Role> roles);
 
     List<User> findAllByRole(Role role);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role <> 'SUPER_ADMIN'")
+    long countEmployeesExcludingSuperAdmin();
+
 }

@@ -36,6 +36,6 @@ public class RequestDTO {
         this.status = savedRequest.getStatus().name();
         this.allowanceAmount = savedRequest.getAllowanceAmount();
         this.overtimeHours = savedRequest.getOvertimeHours();
-        this.employeeName = savedRequest.getUser().getUsername(); // Assuming username is the employee's name
+        this.employeeName = savedRequest.getUser().getName();
     }
 }
