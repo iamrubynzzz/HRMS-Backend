@@ -52,6 +52,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/v1/manager/**").hasAnyAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/user/details").authenticated()
+                        .requestMatchers("/api/v1/user/my-leave-balance").authenticated()
+                        .requestMatchers("/api/v1/user/manager/leave-balances").authenticated()
                         .requestMatchers("/api/v1/user/**").hasAnyAuthority(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                         .requestMatchers("/api/attendance/**").authenticated()
                         .requestMatchers("/api/leave/apply").permitAll()
@@ -61,11 +63,14 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/requests/profile").authenticated()
                         .requestMatchers("/api/requests/**").permitAll()
                         .requestMatchers("/api/companies").permitAll()
+                        .requestMatchers("/api/v1/salaries/my-salary").authenticated()
+                        .requestMatchers("/api/v1/salaries/manager-payroll").hasAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/salaries/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/announcements/create").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/notifications/unread").authenticated()
                         .requestMatchers("/api/notifications/mark-as-read/**").authenticated()
                         .requestMatchers("/api/consolidated-salaries").hasAuthority(Role.ADMIN.name())
+
 
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2

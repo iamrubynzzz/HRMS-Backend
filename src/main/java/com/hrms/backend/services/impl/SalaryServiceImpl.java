@@ -11,7 +11,9 @@ import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -298,4 +300,69 @@ public class SalaryServiceImpl implements SalaryService {
 
         return releasedCount;
     }
+
+    // Fetch monthly payroll for the manager view with filtering and pagination
+    // Fetch payroll for a single user (manager or employee)
+    public Page<SalaryDTO> getMonthlyPayrollForUser(User user, LocalDate startDate, LocalDate endDate, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("calculationDate").descending());
+        return salaryRepository.findByUserAndCalculationDateBetween(user, startDate, endDate, pageable)
+                .map(this::mapToDTO);  // Map to DTO
+    }
+
+    // Fetch payroll for multiple users (employees under a manager)
+    // Method to get payroll for multiple users (employees under a manager)
+    // Method to get payroll for multiple users (employees under a manager)
+    public Page<SalaryDTO> getMonthlyPayrollForMultipleUsers(List<Long> userIds, LocalDate startDate, LocalDate endDate, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("calculationDate").descending());
+        return salaryRepository.findByUserIdInAndCalculationDateBetween(userIds, startDate, endDate, pageable)
+                .map(this::mapToDTO);  // Mapping the Salary entity to DTO
+    }
+
+    // Mapping method from Salary entity to SalaryDTO
+    private SalaryDTO mapToDTO(Salary salary) {
+        return new SalaryDTO(
+                salary.getId(),
+                salary.getUser().getName(),
+                salary.getGrossSalary(),
+                salary.getTaxDeduction(),
+                salary.getOvertimePayTotal(),
+                salary.getAllowanceAmountTotal(),
+                salary.getNetSalary(),
+                salary.getCalculationDate(),
+                salary.getStatus()
+        );
+    }
+
+    // Fetch monthly payroll for the logged-in user with filtering and pagination
+    @Override
+    public Page<SalaryDTO> getMonthlyPayroll(User user, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        // Fetch paginated and filtered salary records for the logged-in user
+        Page<Salary> salaries;
+        if (startDate != null && endDate != null) {
+            // Fetch salaries between the start and end date
+            salaries = salaryRepository.findByUserAndCalculationDateBetween(user, startDate, endDate, pageable);
+        } else {
+            // If no date range is specified, fetch all salaries for the user
+            salaries = salaryRepository.findByUser(user, pageable);
+        }
+
+        // Map the Page<Salary> to Page<SalaryDTO>
+        return salaries.map(salary -> new SalaryDTO(
+                salary.getId(),
+                salary.getUser().getName(),
+                salary.getGrossSalary(),
+                salary.getTaxDeduction(),
+                salary.getOvertimePayTotal(),
+                salary.getAllowanceAmountTotal(),
+                salary.getNetSalary(),
+                salary.getCalculationDate(),
+                salary.getStatus()
+        ));
+    }
+
+
+
+
+
+
 }

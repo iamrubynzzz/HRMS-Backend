@@ -456,5 +456,4 @@ public class RequestServiceImpl implements RequestService {
         // Map the Page<Request> to Page<RequestDTO>
         return requests.map(this::mapToDTO);
     }
-
 }

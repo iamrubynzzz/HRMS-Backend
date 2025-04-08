@@ -42,14 +42,6 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
                               @Param("endDate") LocalDate endDate,
                               Pageable pageable);
 
-    @Query("SELECT s FROM Salary s WHERE (:employeeName IS NULL OR s.user.name LIKE %:employeeName%) " +
-            "AND (:startDate IS NULL OR s.calculationDate >= :startDate) " +
-            "AND (:endDate IS NULL OR s.calculationDate <= :endDate) " +
-            "AND (s.status = 'RELEASED')")
-    List<Salary> findSalaries(@Param("employeeName") String employeeName,
-                              @Param("startDate") LocalDate startDate,
-                              @Param("endDate") LocalDate endDate);
-
 
     @Query("SELECT s FROM Salary s WHERE " +
             "s.consolidatedSalary.id = :id AND " +
@@ -77,5 +69,14 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
     int bulkReleaseSalaries(@Param("consolidatedSalaryId") Long consolidatedSalaryId);
 
     List<Salary> findByConsolidatedSalaryId(Long consolidatedSalaryId);
+
+    List<Salary> findByUserIdAndStatus(int userId, SalaryStatus salaryStatus);
+
+    Page<Salary> findByUserAndCalculationDateBetween(User user, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    Page<Salary> findByUser(User user, Pageable pageable);
+
+    // Fetch payroll for multiple users (employees) within a date range
+    Page<Salary> findByUserIdInAndCalculationDateBetween(List<Long> userIds, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
 }
