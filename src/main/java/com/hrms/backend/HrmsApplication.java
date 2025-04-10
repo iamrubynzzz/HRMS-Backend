@@ -6,6 +6,7 @@ import com.hrms.backend.entities.User;
 import com.hrms.backend.entities.Status;
 import com.hrms.backend.exception.GenericException;
 import com.hrms.backend.repository.NotificationRepository;
+import com.hrms.backend.repository.UserNotificationRepository;
 import com.hrms.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +34,10 @@ public class HrmsApplication implements CommandLineRunner {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private UserNotificationRepository userNotificationRepository;
+
 
     @Value("${admin.email}")
     private String adminEmail;
@@ -62,7 +67,7 @@ public class HrmsApplication implements CommandLineRunner {
             } else {
                 System.out.println("Super Admin user already exists.");
             }
-            SocketServer server = new SocketServer(new InetSocketAddress("0.0.0.0",8091), notificationRepository);
+            SocketServer server = new SocketServer(new InetSocketAddress("0.0.0.0",8091), notificationRepository, userNotificationRepository, userRepository);
             server.start();
         } catch (Exception e) {
             throw new GenericException("Error creating Super admin user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);

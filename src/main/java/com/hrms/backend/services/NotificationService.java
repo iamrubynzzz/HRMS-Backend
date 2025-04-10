@@ -9,5 +9,7 @@ import java.util.List;
 
 public interface NotificationService {
 
-   // void sendNotification(User user, String message, NotificationType type);
+    boolean markNotificationAsRead(Long userId, Long notificationId);
+
+    boolean markAllNotificationsAsRead(Long userId, String role);
 }
