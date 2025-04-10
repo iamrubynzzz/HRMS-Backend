@@ -1,5 +1,6 @@
 package com.hrms.backend.services.impl;
 
+import com.hrms.backend.dto.LeaveBalanceDTO;
 import com.hrms.backend.dto.NotificationMessage;
 import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.*;
@@ -102,7 +103,6 @@ public class RequestServiceImpl implements RequestService {
     }
 
 
-
     private void validateRequest(RequestDTO requestDTO) {
         // Validation for Leave Requests (PAID_LEAVE and UNPAID_LEAVE)
         if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name()) ||
@@ -122,6 +122,27 @@ public class RequestServiceImpl implements RequestService {
             if (hasOverlappingLeave(requestDTO.getUserId(), requestDTO.getStartDate(), requestDTO.getEndDate())) {
                 throw new GenericException("User has already applied for leave on the same dates.", HttpStatus.BAD_REQUEST);
             }
+
+            // Calculate requested days
+            long requestedDays = ChronoUnit.DAYS.between(requestDTO.getStartDate(), requestDTO.getEndDate()) + 1;
+
+            // Fetch user's leave balance
+            Long userId = Long.parseLong(String.valueOf(requestDTO.getUserId()));
+            UserInfo userInfo = userInfoRepository.findByUserId(Math.toIntExact(userId))
+                    .orElseThrow(() -> new GenericException("User info not found for ID " + userId, HttpStatus.NOT_FOUND));
+
+            if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_SICK_LEAVE.name())) {
+                if (userInfo.getSickLeaveBalance() < requestedDays) {
+                    throw new GenericException("Insufficient paid sick leave balance.", HttpStatus.BAD_REQUEST);
+                }
+            }
+
+            if (requestDTO.getRequestType().equalsIgnoreCase(RequestType.PAID_ANNUAL_LEAVE.name())) {
+                if (userInfo.getAnnualLeaveBalance() < requestedDays) {
+                    throw new GenericException("Insufficient paid annual leave balance.", HttpStatus.BAD_REQUEST);
+                }
+            }
+
         }
 
         // Validation for Overtime Requests
@@ -295,13 +316,6 @@ public class RequestServiceImpl implements RequestService {
                 .collect(Collectors.toList());
     }
 
-  /*  @Override
-    public List<RequestDTO> getAllRequestsForLoggedInUser(User user) {
-        List<Request> requests = requestRepository.findByUser(user);
-        return requests.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }*/
 
     @Override
     public Page<RequestDTO> getAllRequests(User user, Status status, LocalDate date, String employeeName, Pageable pageable) {
@@ -311,7 +325,6 @@ public class RequestServiceImpl implements RequestService {
         // Map the Page<Request> to Page<RequestDTO>
         return requests.map(this::mapToDTO);
     }
-
 
 
     @Override

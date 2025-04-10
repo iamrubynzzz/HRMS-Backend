@@ -202,7 +202,6 @@ public class RequestController {
 
         // Get logged-in user
         String username = principal.getName();
-        System.out.println("============"+username);
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 

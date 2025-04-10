@@ -65,6 +65,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/requests/**").permitAll()
                         .requestMatchers("/api/companies").permitAll()
                         .requestMatchers("/api/v1/salaries/my-salary").authenticated()
+                        .requestMatchers("api/v1/notification/**").permitAll()
                         .requestMatchers("/api/generate/attendance/report").authenticated()
                         .requestMatchers("/api/v1/salaries/manager-payroll").hasAuthority(Role.MANAGER.name())
                         .requestMatchers("/api/v1/salaries/generate/**").authenticated()

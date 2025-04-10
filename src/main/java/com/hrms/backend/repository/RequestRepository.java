@@ -1,5 +1,6 @@
 package com.hrms.backend.repository;
 
+import com.hrms.backend.dto.LeaveBalanceDTO;
 import com.hrms.backend.entities.Request;
 import com.hrms.backend.entities.RequestType;
 import com.hrms.backend.entities.Status;
@@ -53,13 +54,6 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
             Pageable pageable
     );
 
-    /*Used for admin view of requests
-    @Query("SELECT r FROM Request r " +
-            "WHERE (:status IS NULL OR r.status = :status) " +
-            "AND (:startDate IS NULL OR r.createdDate >= :startDate) " +
-            "AND (:endDate IS NULL OR r.createdDate <= :endDate) " +
-            "AND (:employeeUsername IS NULL OR r.user.name = :employeeUsername)")
-    Page<Request> findRequests(Status status, LocalDate startDate, LocalDate endDate, String employeeUsername, Pageable pageable);*/
 
     @Query("SELECT r FROM Request r JOIN r.user u WHERE "
             + "(:status IS NULL OR r.status = :status) "

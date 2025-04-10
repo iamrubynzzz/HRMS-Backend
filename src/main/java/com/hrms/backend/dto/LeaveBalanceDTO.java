@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LeaveBalanceDTO {
     private String name;
-    private Integer annualLeaveBalance;
-    private Integer sickLeaveBalance;
+    private Integer annualLeaveBalance ;
+    private Integer sickLeaveBalance ;
+
 }
