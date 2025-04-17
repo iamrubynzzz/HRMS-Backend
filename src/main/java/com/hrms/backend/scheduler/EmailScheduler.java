@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class EmailScheduler {
     private final EmailService emailService;
 
-    //@Scheduled(cron = "0 * * * * ?") sample to run every minute
+    //@Scheduled(cron = "0 * * * * ?") sample to run 0 second of every minute
     @Scheduled(cron = "0 * * * * ?")
     public void processEmail() {
         emailService.processEmail();

@@ -242,8 +242,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new UserResponseDTO(user, userInfo, managerName);
     }
 
-
-
     @Override
     public Page<UserResponseDTO> getAllUsers(String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -312,7 +310,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 throw new GenericException("Invalid role: " + userRequestDTO.getRole(), HttpStatus.BAD_REQUEST);
             }
         }
-
         userRepository.save(user);
 
         // Update the managerId if provided
@@ -374,33 +371,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new ResourceNotFoundException("User with ID " + id + " not found"));
 
         try {
-            // Log or debug
-            System.out.println("Deleting attendance records for user: " + user.getId());
-            attendanceRepository.deleteByUser(user);
-
-            System.out.println("Deleting salary records for user: " + user.getId());
-            salaryRepository.deleteByUser(user);
-
-            notificationRepository.deleteByUserId(user.getId());
-
-            System.out.println("Deleting request records for user: " + user.getId());
-            requestRepository.deleteByUser(user);
-
-            System.out.println("Deleting employee-manager records for user: " + user.getId());
-            employeeManagerRepository.findByEmployeeId(user.getId())
-                    .ifPresent(employeeManagerRepository::delete);
-
-            System.out.println("Deleting user info for user: " + user.getId());
-            userInfoRepository.deleteByUserId(user.getId());
-
-            // Delete the user now
-            System.out.println("Deleting user: " + user.getId());
-            userRepository.delete(user);
-
+            user.setStatus(Status.INACTIVE);
+            userRepository.save(user);
+            System.out.println("User " + id + " marked as INACTIVE.");
         } catch (Exception ex) {
-            throw new DeletionException("Failed to delete user with ID: " + id + ". Reason: " + ex.getMessage());
+            throw new GenericException("Failed to deactivate user with ID: " + id + ". Reason: ",HttpStatus.BAD_REQUEST);
         }
     }
+
 
     // To show total no. of employees in dashboard
     @Override
@@ -463,5 +441,22 @@ public class EmployeeServiceImpl implements EmployeeService {
             return new UserResponseDTO(user, userInfo, managerName);
         });
     }
+
+    @Override
+    public Page<UserResponseDTO> getAllAdmins(String name, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<User> usersPage = userRepository.findAllByRoleAndNameContainingIgnoreCase(
+                Role.ADMIN,
+                name != null ? name : "",
+                pageable
+        );
+
+        return usersPage.map(user -> {
+            UserInfo userInfo = userInfoRepository.findByUserId(user.getId()).orElse(null);
+            return new UserResponseDTO(user, userInfo, null); // No manager for admin
+        });
+    }
+
 
 }

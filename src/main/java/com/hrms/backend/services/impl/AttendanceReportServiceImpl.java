@@ -1,6 +1,7 @@
 package com.hrms.backend.services.impl;
 
 import com.hrms.backend.entities.Attendance;
+import com.hrms.backend.entities.User;
 import com.hrms.backend.services.AttendanceReportService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.*;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,7 @@ public class AttendanceReportServiceImpl implements AttendanceReportService {
             throw new JRException("Could not find attendanceReport.jrxml in classpath.");
         }
 
+        // Compile the file
         JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
 
         // Create data source from attendance records

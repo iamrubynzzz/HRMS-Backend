@@ -165,7 +165,7 @@ public class SalaryServiceImpl implements SalaryService {
             LocalDate date = yearMonth.atDay(day);
             DayOfWeek dayOfWeek = date.getDayOfWeek();
 
-            // Count only Monday to Friday as working days
+            // Count only Sunday to Friday as working days
             if (dayOfWeek != DayOfWeek.SATURDAY) {
                 workingDays++;
             }
@@ -173,6 +173,8 @@ public class SalaryServiceImpl implements SalaryService {
         return workingDays;
     }
 
+
+    // Calculate and return total number of unpaid leave days
     public int getUnpaidLeaveDays(User user) {
         List<Request> totalUnPaidSickRequest = requestRepository.findByUserAndRequestTypeAndStatus(user, RequestType.UNPAID_SICK_LEAVE, Status.APPROVED);
         List<Request> totalUnPaidAnnualRequest = requestRepository.findByUserAndRequestTypeAndStatus(user, RequestType.UNPAID_ANNUAL_LEAVE, Status.APPROVED);
@@ -309,7 +311,7 @@ public class SalaryServiceImpl implements SalaryService {
                 .map(this::mapToDTO);  // Map to DTO
     }
 
-    // Fetch payroll for multiple users (employees under a manager)
+
     // Method to get payroll for multiple users (employees under a manager)
     public Page<SalaryDTO> getMonthlyPayrollForMultipleUsers(List<Long> userIds, LocalDate startDate, LocalDate endDate, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("calculationDate").descending());
@@ -358,10 +360,4 @@ public class SalaryServiceImpl implements SalaryService {
                 salary.getStatus()
         ));
     }
-
-
-
-
-
-
 }

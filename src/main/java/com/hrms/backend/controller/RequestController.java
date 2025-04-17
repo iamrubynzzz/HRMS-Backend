@@ -3,6 +3,7 @@ package com.hrms.backend.controller;
 import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.*;
 import com.hrms.backend.exception.AccessDeniedException;
+import com.hrms.backend.repository.EmployeeManagerRepository;
 import com.hrms.backend.repository.UserRepository;
 import com.hrms.backend.services.JWTService;
 import com.hrms.backend.services.RequestService;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -44,6 +46,7 @@ public class RequestController {
     @Autowired
     private UserRepository userRepository;
     private final UserService userService;
+    private final EmployeeManagerRepository employeeManagerRepository;
 
     @Qualifier("JWTServiceImpl")
     private final JWTService jwtService;
@@ -220,4 +223,47 @@ public class RequestController {
         Page<RequestDTO> allRequests = requestService.getAllRequests(user, status, date, employeeName, pageable);
         return ResponseEntity.ok(allRequests);
     }
+
+    @GetMapping("/manager-requests")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Page<RequestDTO>> getManagerEmployeesRequests(
+            Principal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdDate,desc") String sort,
+            @RequestParam(required = false) Status status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        // Get the manager's details
+        String username = principal.getName();
+        User manager = userService.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Manager not found"));
+
+        // Fetch the employees managed by the logged-in manager
+        List<Integer> managedEmployeeIds = employeeManagerRepository.findEmployeeIdsByManagerId(manager.getId());
+
+        if (managedEmployeeIds.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+        }
+
+        // Parse sort parameter
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = Sort.Direction.fromString(sortParams[1]);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        // Fetch requests for the managed employees with or without filters
+        Page<RequestDTO> employeeRequests;
+
+        if (status != null || date != null) {
+            // Apply filters (status, date) if provided
+            employeeRequests = requestService.getRequestsForEmployees(managedEmployeeIds, status, date, pageable);
+        } else {
+            // If no filters are provided, fetch all requests
+            employeeRequests = requestService.getRequestsForEmployees(managedEmployeeIds, pageable);
+        }
+
+        return ResponseEntity.ok(employeeRequests);
+    }
+
+
 }

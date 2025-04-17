@@ -81,23 +81,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 throw new GenericException("Your account is not approved yet. Please wait for approval.", HttpStatus.FORBIDDEN);
             }
 
-            // Skip company validation for Super Admin
-            if (user.getRole() != Role.SUPER_ADMIN) {
-                // For Admin, Manager, and Employee, company name is required
-                if (loginRequest.getCompanyName() == null || loginRequest.getCompanyName().isEmpty()) {
-                    throw new GenericException("Company name is required for login.", HttpStatus.BAD_REQUEST);
-                }
-
-                // Validate the company
-                Company company = companyRepository.findByName(loginRequest.getCompanyName())
-                        .orElseThrow(() -> new GenericException("Invalid company name.", HttpStatus.BAD_REQUEST));
-
-                // Check if the user belongs to the specified company
-                if (!user.getCompany().equals(company)) {
-                    throw new GenericException("User does not belong to the specified company.", HttpStatus.FORBIDDEN);
-                }
-            }
-
             // Authenticate the user
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -119,7 +102,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             JwtAuthenticationResponse jwtAuthenticationResponse = new JwtAuthenticationResponse();
             jwtAuthenticationResponse.setToken(jwt);
             jwtAuthenticationResponse.setRefreshToken(refreshToken);
-
+            jwtAuthenticationResponse.setRole(user.getRole());
             return jwtAuthenticationResponse;
 
         } catch (BadCredentialsException e) {

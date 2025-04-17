@@ -25,6 +25,7 @@ public class RequestDTO {
     private Integer overtimeHours;
     private String employeeName;
 
+
     public RequestDTO(Request savedRequest) {
         this.id = savedRequest.getId();
         this.userId = Long.valueOf(savedRequest.getUser().getId());
@@ -37,5 +38,6 @@ public class RequestDTO {
         this.allowanceAmount = savedRequest.getAllowanceAmount();
         this.overtimeHours = savedRequest.getOvertimeHours();
         this.employeeName = savedRequest.getUser().getName();
+
     }
 }
