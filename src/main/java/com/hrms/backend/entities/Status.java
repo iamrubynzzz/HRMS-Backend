@@ -1,8 +1,8 @@
 package com.hrms.backend.entities;
 
 public enum Status {
-    PENDING,   // Waiting for admin approval
+    PENDING,
     APPROVED,  // Approved by admin
-    DISABLED,
+    INACTIVE ,
     REJECTED   // Rejected by admin
 }

@@ -326,6 +326,27 @@ public class RequestServiceImpl implements RequestService {
         return requests.map(this::mapToDTO);
     }
 
+    @Override
+    public Page<RequestDTO> getRequestsForEmployees(List<Integer> employeeIds, Status status, LocalDate date, Pageable pageable) {
+        // Fetch requests based on employeeIds, status, and date
+        if (date != null) {
+            return requestRepository.findByUserIdInAndStatusAndCreatedDate(employeeIds, status, date, pageable)
+                    .map(this::mapToDTO);
+        } else {
+            return requestRepository.findByUserIdInAndStatus(employeeIds, status, pageable)
+                    .map(this::mapToDTO);
+        }
+    }
+
+    @Override
+    public Page<RequestDTO> getRequestsForEmployees(List<Integer> employeeIds, Pageable pageable) {
+        // Fetch all requests for the employees with pagination
+        return requestRepository.findByUserIdIn(employeeIds, pageable)
+                .map(this::mapToDTO);
+    }
+
+
+
 
     @Override
     public Request updateRequestStatus(Long requestId, Status status) {
@@ -346,6 +367,23 @@ public class RequestServiceImpl implements RequestService {
         // Check if the request is already approved
         if (request.getStatus() == Status.APPROVED) {
             throw new GenericException("Leave request is already approved", HttpStatus.BAD_REQUEST);
+        }
+
+        User approver = userRepository.findById(approverId)
+                .orElseThrow(() -> new GenericException("Approver not found", HttpStatus.NOT_FOUND));
+
+
+        // Check if the approver's role is valid for the request's user role
+        if (request.getUser().getRole() == Role.EMPLOYEE) {
+            // If the user is an employee, both manager and admin can approve the request
+            if (approver.getRole() != Role.MANAGER && approver.getRole() != Role.ADMIN) {
+                throw new GenericException("Only manager or admin can approve an employee's request", HttpStatus.FORBIDDEN);
+            }
+        } else if (request.getUser().getRole() == Role.MANAGER) {
+            // If the user is a manager, only admin can approve the request
+            if (approver.getRole() != Role.ADMIN) {
+                throw new GenericException("Only admin can approve a manager's request", HttpStatus.FORBIDDEN);
+            }
         }
 
         // Handle MISSED_ATTENDANCE request approval
@@ -373,7 +411,7 @@ public class RequestServiceImpl implements RequestService {
             }
         }
 
-        // Update the request status and approved by
+        // Handle leave request balance update
         if (request.getRequestType() == RequestType.PAID_SICK_LEAVE ||
                 request.getRequestType() == RequestType.PAID_ANNUAL_LEAVE) {
             UserInfo userInfo = request.getUser().getUserInfo();
@@ -385,24 +423,25 @@ public class RequestServiceImpl implements RequestService {
                 int newLeaveBalance = userInfo.getAnnualLeaveBalance() - request.getLeaveDays();
                 userInfo.setAnnualLeaveBalance(newLeaveBalance);
             }
-
         }
+
+        // Set request status to APPROVED
         request.setStatus(Status.APPROVED);
 
-        request.setApprovedBy(userRepository.findById(approverId)
-                .orElseThrow(() -> new GenericException("Approver not found", HttpStatus.NOT_FOUND))
-                .getId());
+        // Set the approver's ID
+        request.setApprovedBy(approver.getId());
 
         // Save the updated request
         requestRepository.save(request);
 
         // Create and save a notification
         String message = "Your " + request.getRequestType().name().replace("_", " ").toLowerCase() + " request has been approved.";
-        Notification notification = new Notification(request.getUser(), message, NotificationType.REQUEST,"USER", Status.APPROVED);
+        Notification notification = new Notification(request.getUser(), message, NotificationType.REQUEST, "USER", Status.APPROVED);
         notificationRepository.save(notification);
 
         return mapToDTO(request);
     }
+
 
 
     @Override
@@ -412,12 +451,28 @@ public class RequestServiceImpl implements RequestService {
         if (requestOpt.isPresent()) {
             Request request = requestOpt.get();
 
+            // Fetch the rejecter from the userRepository
+            User rejecter = userRepository.findById(rejecterId)
+                    .orElseThrow(() -> new GenericException("Rejecter not found", HttpStatus.NOT_FOUND));
+
+            // Check if the rejecter's role
+            if (request.getUser().getRole() == Role.EMPLOYEE) {
+                // If the user is an employee, both manager and admin can reject the request
+                if (rejecter.getRole() != Role.MANAGER && rejecter.getRole() != Role.ADMIN) {
+                    throw new GenericException("Only manager or admin can reject an employee's request", HttpStatus.FORBIDDEN);
+                }
+            } else if (request.getUser().getRole() == Role.MANAGER) {
+                // If the user is a manager, only admin can reject the request
+                if (rejecter.getRole() != Role.ADMIN) {
+                    throw new GenericException("Only admin can reject a manager's request", HttpStatus.FORBIDDEN);
+                }
+            }
+
+            // Set the status of the request to REJECTED
             request.setStatus(Status.REJECTED);
 
             // Set the ID of the user who rejected the request
-            request.setRejectedBy(userRepository.findById(rejecterId)
-                    .orElseThrow(() -> new GenericException("Rejecter not found", HttpStatus.NOT_FOUND))
-                    .getId());
+            request.setRejectedBy(rejecter.getId());
 
             // Save the updated request
             requestRepository.save(request);
@@ -427,11 +482,13 @@ public class RequestServiceImpl implements RequestService {
             Notification notification = new Notification(request.getUser(), message, NotificationType.REQUEST, "USER", Status.REJECTED);
             notificationRepository.save(notification);
 
+            // Return the updated request as a DTO
             return mapToDTO(request);
         }
 
         throw new GenericException("Leave request not found", HttpStatus.NOT_FOUND);
     }
+
 
     //To cancel a request created by user
     //Employee can cancel the request they created

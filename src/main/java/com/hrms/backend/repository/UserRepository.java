@@ -60,4 +60,6 @@ public interface UserRepository extends JpaRepository<User, Integer>, JpaSpecifi
     Page<User> findByIdInAndNameContainingIgnoreCase(List<Integer> ids, String name, Pageable pageable);
 
 
+    Page<User> findAllByRoleAndNameContainingIgnoreCase(Role role, String name, Pageable pageable);
+
 }

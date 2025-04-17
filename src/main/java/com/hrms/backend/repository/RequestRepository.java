@@ -1,6 +1,7 @@
 package com.hrms.backend.repository;
 
 import com.hrms.backend.dto.LeaveBalanceDTO;
+import com.hrms.backend.dto.RequestDTO;
 import com.hrms.backend.entities.Request;
 import com.hrms.backend.entities.RequestType;
 import com.hrms.backend.entities.Status;
@@ -67,4 +68,12 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
             Pageable pageable
     );
 
+    // Find requests by user IDs, status, and created date
+    Page<Request> findByUserIdInAndStatusAndCreatedDate(List<Integer> userIds, Status status, LocalDate createdDate, Pageable pageable);
+
+    // Find requests by user IDs and status without filtering by date
+    Page<Request> findByUserIdInAndStatus(List<Integer> userIds, Status status, Pageable pageable);
+
+    // Find requests by user IDs without filtering by status or date
+    Page<Request> findByUserIdIn(List<Integer> userIds, Pageable pageable);
 }

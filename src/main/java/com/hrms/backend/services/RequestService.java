@@ -35,5 +35,10 @@ public interface RequestService {
 
     Page<RequestDTO> getAllRequests(User user, Status status, LocalDate date, String employeeName, Pageable pageable);
 
+    // Method to fetch requests for employees managed by the logged-in manager
+    Page<RequestDTO> getRequestsForEmployees(List<Integer> employeeIds, Status status, LocalDate date, Pageable pageable);
+
+    // Overloaded method to fetch all requests without filters
+    Page<RequestDTO> getRequestsForEmployees(List<Integer> employeeIds, Pageable pageable);
 }
 

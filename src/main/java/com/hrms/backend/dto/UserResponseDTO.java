@@ -24,6 +24,7 @@ public class UserResponseDTO {
     private Integer annualLeaveBalance;
     private Integer sickLeaveBalance;
 
+
     // Constructor
     public UserResponseDTO(User user, UserInfo userInfo, String managerName) {
         this.id = user.getId();

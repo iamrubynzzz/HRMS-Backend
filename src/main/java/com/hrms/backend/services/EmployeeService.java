@@ -23,4 +23,6 @@ public interface EmployeeService {
     long countEmployeesByGender(String gender);
 
     Page<UserResponseDTO> getAssignedEmployeesByManager(Integer id, String name, int page, int size);
+
+    Page<UserResponseDTO> getAllAdmins(String name, int page, int size);
 }

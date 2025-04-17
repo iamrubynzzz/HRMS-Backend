@@ -89,6 +89,23 @@ public class EmployeeController {
         return ResponseEntity.ok(usersPage);
     }
 
+    @GetMapping("/admins")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Page<UserResponseDTO>> getAllAdmins(
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        System.out.println("Fetching admin users - Name: " + name + ", Page: " + page + ", Size: " + size);
+
+        Page<UserResponseDTO> usersPage = employeeService.getAllAdmins(name, page, size);
+
+        System.out.println("Total Admins Retrieved: " + usersPage.getTotalElements());
+
+        return ResponseEntity.ok(usersPage);
+    }
+
+
 
     // Api for the manager view so that they can see the list of employees that are assigned to them
     @GetMapping("/assigned-employees")
@@ -131,8 +148,6 @@ public class EmployeeController {
         employeeService.deleteUser(id);
         return ResponseEntity.ok("Employee deactivated successfully");
     }
-
-
 
     @GetMapping("/details")
     public Integer getUserId() {
