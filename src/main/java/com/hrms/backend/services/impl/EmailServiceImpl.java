@@ -8,6 +8,10 @@ import com.hrms.backend.services.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -67,6 +71,19 @@ public class EmailServiceImpl implements EmailService {
             }
         });
     }
+
+
+    @Override
+    public Page<EmailMessage> getPaginatedEmailMessages(int page, int size, String recipientAddress) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        if (recipientAddress != null && !recipientAddress.isEmpty()) {
+            return emailMessageRepository.findByRecipientAddressContainingIgnoreCase(recipientAddress, pageable);
+        } else {
+            return emailMessageRepository.findAll(pageable);
+        }
+    }
+
 }
 
 

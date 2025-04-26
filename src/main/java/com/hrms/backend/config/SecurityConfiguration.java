@@ -55,6 +55,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/user/my-leave-balance").authenticated()
                         .requestMatchers("/api/v1/user/manager/leave-balances").authenticated()
                         .requestMatchers("/api/v1/user/assigned-employees").authenticated()
+                        .requestMatchers("/api/v1/user/stats").authenticated()
                         .requestMatchers("/api/v1/user/**").hasAnyAuthority(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                         .requestMatchers("/api/attendance/**").authenticated()
                         .requestMatchers("/api/leave/apply").permitAll()
@@ -77,7 +78,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/notifications/unread").authenticated()
                         .requestMatchers("/api/notifications/mark-as-read/**").authenticated()
                         .requestMatchers("/api/consolidated-salaries").hasAuthority(Role.ADMIN.name())
-
+                        .requestMatchers("/api/email/email-messages").hasAuthority(Role.ADMIN.name())
 
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
