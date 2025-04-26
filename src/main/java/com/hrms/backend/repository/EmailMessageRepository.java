@@ -3,6 +3,8 @@ package com.hrms.backend.repository;
 import com.hrms.backend.entities.EmailMessage;
 import com.hrms.backend.entities.EmailStatus;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,5 +21,7 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Inte
     @Transactional
     @Query("UPDATE EmailMessage e SET e.status = :status WHERE e.id = :id")
     void updateEmailStatusById(int id, EmailStatus status);
+
+    Page<EmailMessage> findByRecipientAddressContainingIgnoreCase(String recipientAddress, Pageable pageable);
 }
 

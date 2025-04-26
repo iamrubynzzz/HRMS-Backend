@@ -163,7 +163,6 @@ public class EmployeeController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getEmployeeStats() {
         long totalEmployees = employeeService.countTotalEmployees();
         long totalMale = employeeService.countEmployeesByGender("Male");
